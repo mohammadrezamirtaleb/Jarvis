@@ -38,7 +38,25 @@ class AvatarEngine {
 
         this.container.style.opacity = '0';
         this.container.style.pointerEvents = 'none';
-        this.container.style.transition = 'opacity 2s ease';
+        this.container.style.transition = 'opacity 1s ease';
+        this.container.style.background = 'radial-gradient(circle at center, rgba(6, 17, 44, 0.85) 0%, rgba(2, 4, 9, 0.98) 100%)';
+        this.container.style.backdropFilter = 'blur(12px)';
+        
+        // Add Close Button
+        this.closeBtn = document.createElement('button');
+        this.closeBtn.innerText = '✖ CLOSE AVATAR';
+        this.closeBtn.style.position = 'absolute';
+        this.closeBtn.style.top = '30px';
+        this.closeBtn.style.right = '30px';
+        this.closeBtn.style.background = 'rgba(255, 0, 50, 0.2)';
+        this.closeBtn.style.border = '1px solid rgba(255, 0, 50, 0.5)';
+        this.closeBtn.style.color = '#ff3366';
+        this.closeBtn.style.padding = '8px 16px';
+        this.closeBtn.style.fontFamily = 'var(--font-telemetry, monospace)';
+        this.closeBtn.style.cursor = 'pointer';
+        this.closeBtn.style.zIndex = '9001';
+        this.closeBtn.onclick = () => this.hideAvatar();
+        this.container.appendChild(this.closeBtn);
     }
 
     loadModel() {
@@ -140,6 +158,7 @@ class AvatarEngine {
     formAvatar() {
         if (this.isForming) return;
         this.container.style.opacity = '1';
+        this.container.style.pointerEvents = 'auto';
         this.isForming = true;
         
         if (window.jarvisAudio) window.jarvisAudio.playBoot();
@@ -148,6 +167,7 @@ class AvatarEngine {
     hideAvatar() {
         if (!this.isForming) return;
         this.container.style.opacity = '0';
+        this.container.style.pointerEvents = 'none';
         this.isForming = false;
         
         if (this.particleSystem) {
