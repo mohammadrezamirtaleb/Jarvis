@@ -86,6 +86,7 @@ J.A.R.V.I.S. utilizes a **Client-Server architecture** communicating via WebSock
 
 ```text
 📦 Jarvis
+ ┣ 📂 assets/                 # Graphics, banners, and repo media
  ┣ 📂 core/                   # Core Backend Modules (Python)
  ┃ ┣ 📜 llm_engine.py         # AI Model routing & Tag execution
  ┃ ┣ 📜 memory_vault.py       # JSON/SQLite persistent memory
