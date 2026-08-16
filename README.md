@@ -1,4 +1,6 @@
 <div align="center">
+  <img src="assets/banner.png" alt="J.A.R.V.I.S. Banner" width="100%">
+  <br><br>
   
 # 🛡️ J.A.R.V.I.S. Personal AI Assistant
 ### *Just A Rather Very Intelligent System (Mark-86 OS)*
