@@ -1,76 +1,148 @@
-# 🛡️ J.A.R.V.I.S. (Just A Rather Very Intelligent System)
-
 <div align="center">
-  <img src="https://img.shields.io/badge/Status-Online-success?style=for-the-badge" alt="Status Online">
-  <img src="https://img.shields.io/badge/Version-Mark_86-blue?style=for-the-badge" alt="Version">
-  <img src="https://img.shields.io/badge/Powered_by-FastAPI_%7C_Three.js-orange?style=for-the-badge" alt="Powered By">
-</div>
+  
+# 🛡️ J.A.R.V.I.S. Personal AI Assistant
+### *Just A Rather Very Intelligent System (Mark-86 OS)*
 
 <br>
 
-Welcome to the **J.A.R.V.I.S.** AI Assistant project. This is a highly advanced, fully autonomous personal AI assistant modeled after Tony Stark's iconic J.A.R.V.I.S., complete with a stunning Cybernetic HUD, 3D Holographic Avatar, and real-time voice synthesis.
+[![Status](https://img.shields.io/badge/Status-Online-success?style=for-the-badge&logo=statuspage)](#)
+[![Version](https://img.shields.io/badge/Version-Mark_86-blue?style=for-the-badge&logo=stark)](#)
+[![Python](https://img.shields.io/badge/Python-3.10+-yellow?style=for-the-badge&logo=python&logoColor=white)](#)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688?style=for-the-badge&logo=fastapi&logoColor=white)](#)
+[![Three.js](https://img.shields.io/badge/Three.js-WebGL-black?style=for-the-badge&logo=three.js&logoColor=white)](#)
+[![Ollama](https://img.shields.io/badge/Ollama-Local_LLM-white?style=for-the-badge&logo=ollama&logoColor=black)](#)
+
+<br>
+
+*“Sometimes you gotta run before you can walk.”*
+
+</div>
 
 ---
 
-## ✨ Features
+## 🌌 Overview
 
-- **🌐 Holographic 3D Avatar:** Features a stunning 3D particle face powered by `Three.js` that organically forms from "powder", glows, and actively follows your mouse movements.
-- **🧠 Hybrid AI Engine:** Seamlessly switches between Cloud AI (OpenRouter / Gemma / Llama) and Local Offline AI (Ollama - Qwen/Llama3) for ultimate privacy and speed.
-- **🗣️ Voice Synthesis (TTS):** Integrated with Microsoft Edge TTS and local **Piper TTS** with GPU (CUDA) acceleration for natural, instantaneous speech in both English and Persian (فارسی).
-- **👁️ Computer Vision (OCR):** "Vision Lab" capable of analyzing screenshots, extracting text, and understanding what's on your screen.
-- **⚙️ Autonomous System Control:** JARVIS can autonomously execute commands, launch applications, open websites, search the web, and check system vitals.
-- **💾 Neural Memory Vault:** Securely stores configurations, learned facts, and system notes with local Fernet encryption.
-- **⚡ Real-time SSE Streaming:** Extremely fast token streaming directly into the futuristic terminal UI.
+**J.A.R.V.I.S.** is a highly advanced, fully autonomous personal AI desktop companion. Modeled after Tony Stark's iconic cybernetic interface, it is built to bridge the gap between heavy backend neural processing and a stunning futuristic frontend. 
+
+It is capable of thinking locally (via **Ollama**), connecting to the cloud (via **OpenRouter**), synthesizing real-time natural voice (via **Piper/CUDA**), and visually rendering a dynamic **3D Holographic Avatar** that responds to you in real-time.
 
 ---
 
-## 🛠️ Architecture
+## ⚡ Core Capabilities
 
-### Backend (Python/FastAPI)
-- `server.py`: The core FastAPI server handling SSE streaming, TTS pipelines, and WebSockets.
-- `core/llm_engine.py`: Manages the prompt engineering and neural routing between Ollama and OpenRouter.
-- `core/tts_engine.py`: Handles audio generation using Piper and Edge TTS.
-- `core/memory_vault.py`: Local database/JSON store for persistent memory and settings.
-- `core/system_tools.py`: OS-level integrations for launching apps, capturing screenshots, and running shell commands safely.
+<details>
+<summary><b>🤖 1. Dynamic 3D Holographic Avatar (Icarus Engine)</b></summary>
+<br>
+When requested to "show yourself", J.A.R.V.I.S. triggers the <code>AvatarEngine</code>. Over <strong>25,000 glowing WebGL particles</strong> (powered by Three.js) magnetically assemble from scattered powder into a precise 3D human bust. The avatar tracks your mouse movements and features a hot-orange glowing core that seamlessly blends into a cyan aura.
+</details>
 
-### Frontend (HTML/JS/CSS)
-- `static/index.html`: The master Stark Industries HUD interface.
-- `static/js/app.js`: Core client logic, UI binding, Markdown rendering, and WebSocket management.
-- `static/js/avatar.js`: The `Three.js` WebGL engine rendering the 3D particle hologram.
-- `static/js/audio_synth.js`: Manages audio queues and Web Speech API fallbacks.
-- `static/css/reactor.css & hud_core.css`: The beautiful neon-cyan Stark UI aesthetic.
+<details>
+<summary><b>🧠 2. Hybrid LLM Routing (Cloud & Local)</b></summary>
+<br>
+J.A.R.V.I.S. refuses to rely solely on the cloud. The neural engine dynamically routes prompts to <strong>Cloud AI</strong> (e.g., Gemma, Llama-3 via OpenRouter) or falls back to entirely offline <strong>Local AI</strong> (Qwen3.5:4b via Ollama) to ensure 100% uptime and privacy.
+</details>
+
+<details>
+<summary><b>🗣️ 3. Ultra-Fast Voice Synthesis (TTS)</b></summary>
+<br>
+Equipped with offline <strong>Piper TTS</strong> running on CUDA (GPU acceleration) and <strong>Microsoft Edge TTS</strong>. J.A.R.V.I.S. fluently speaks both English and Persian (فارسی), synthesizing audio instantly without interrupting the asynchronous data streams.
+</details>
+
+<details>
+<summary><b>👁️ 4. Vision & OCR Lab</b></summary>
+<br>
+A built-in Vision Lab allows J.A.R.V.I.S. to take screenshots of your desktop, extract text using Optical Character Recognition, and analyze the contents of your screen instantly.
+</details>
+
+<details>
+<summary><b>💻 5. Autonomous OS Control</b></summary>
+<br>
+By utilizing special <code>[[ACTION:...]]</code> neural tags, the AI can autonomously run terminal commands, open applications, fetch system diagnostics (RAM, CPU, GPU), perform web searches, and navigate URLs.
+</details>
 
 ---
 
-## 🚀 Installation & Setup
+## 🏗️ System Architecture
 
+J.A.R.V.I.S. utilizes a **Client-Server architecture** communicating via WebSockets, HTTP REST APIs, and Server-Sent Events (SSE).
+
+### 🧩 1. The Backend (FastAPI Core)
+- **`server.py`**: The central nervous system. A high-performance asynchronous ASGI server that serves the UI, handles REST calls, and multiplexes the SSE streams.
+- **`core/llm_engine.py`**: The logic board handling Prompt Engineering. It parses the <code>[[ACTION:xxx]]</code> tags injected by the AI and executes the corresponding OS-level python commands before streaming the text to the UI.
+- **`core/tts_engine.py`**: An asynchronous wrapper managing FFMPEG and Piper binaries to rapidly generate `.mp3` and `.wav` audio caches, offloading work to the GPU (`--cuda`).
+- **`core/system_tools.py`**: A suite of secure system scripts that give the AI the power to read/write files, launch programs, and manage desktop telemetry.
+
+### 🎨 2. The Frontend (Stark HUD)
+- **`index.html`**: A pure vanilla HTML/CSS masterpiece representing the Stark Industries HUD.
+- **`js/app.js`**: The main controller handling local storage, UI toggles, Markdown parsing, and live SSE event listening.
+- **`js/avatar.js`**: The custom WebGL renderer utilizing `Three.js` and `OBJLoader` to render the 3D particle hologram on a `pointer-events: none` overlay canvas.
+- **`js/audio_synth.js`**: Web Audio API integration that queues and plays synthesized voice files perfectly in sync with the LLM output.
+
+---
+
+## 📂 Project Structure
+
+```text
+📦 Jarvis
+ ┣ 📂 core/                   # Core Backend Modules (Python)
+ ┃ ┣ 📜 llm_engine.py         # AI Model routing & Tag execution
+ ┃ ┣ 📜 memory_vault.py       # JSON/SQLite persistent memory
+ ┃ ┣ 📜 ocr_engine.py         # Computer Vision / Screenshot tools
+ ┃ ┣ 📜 protocols.py          # Stark predefined operational protocols
+ ┃ ┣ 📜 security.py           # Fernet encryption for API keys
+ ┃ ┣ 📜 smart_actions.py      # Web search, URL summarization
+ ┃ ┣ 📜 system_tools.py       # Hardware Telemetry & OS integration
+ ┃ ┗ 📜 tts_engine.py         # Voice Synthesis generation
+ ┣ 📂 static/                 # Frontend Stark HUD (HTML/JS/CSS)
+ ┃ ┣ 📂 css/                  # Glowing Neon-Cyan stylesheets
+ ┃ ┣ 📂 js/                   # Vanilla JS controllers (avatar, audio)
+ ┃ ┣ 📂 models/               # 3D .obj files for the Hologram Avatar
+ ┃ ┗ 📜 index.html            # Main UI Entry Point
+ ┣ 📜 requirements.txt        # Python Dependencies
+ ┣ 📜 run.py                  # Uvicorn Application Launcher
+ ┣ 📜 server.py               # FastAPI Endpoints & WebSockets
+ ┗ 📜 start_jarvis.bat        # Windows Execution Script
+```
+
+---
+
+## 🚀 Quick Start & Installation
+
+### Prerequisites
+- Python 3.10+
+- An NVIDIA GPU (Recommended for Ollama & Piper CUDA integration)
+- `ffmpeg` installed and added to system PATH.
+
+### Installation
 1. **Clone the Repository**
    ```bash
-   git clone https://github.com/mohammadrezamirtaleb/AI-Powered-Projects.git
-   cd AI-Powered-Projects/Jarvis
+   git clone https://github.com/mohammadrezamirtaleb/Jarvis.git
+   cd Jarvis
    ```
-
-2. **Create a Virtual Environment & Install Dependencies**
+2. **Create Virtual Environment**
    ```bash
    python -m venv venv
-   source venv/bin/activate  # On Windows use: venv\Scripts\activate
+   source venv/Scripts/activate
+   ```
+3. **Install Dependencies**
+   ```bash
    pip install -r requirements.txt
    ```
-
-3. **(Optional) Setup Piper TTS for Offline Voice**
-   Download the Piper TTS binary and place it in the `venv/Scripts/` folder, along with your preferred ONNX voice models in the `data/piper_models/` directory.
-
-4. **Launch J.A.R.V.I.S.**
+4. **Boot J.A.R.V.I.S.**
    ```bash
    python run.py
    ```
-   *The system will automatically open your default browser to `http://127.0.0.1:8000`.*
+   *The system will automatically initialize the FastAPI server and launch `http://127.0.0.1:8000` in your default browser.*
 
 ---
 
-## 🔒 Security Note
-This repository contains the **raw source code without API keys**. 
-When you first boot JARVIS, you can securely enter your API keys (e.g., OpenRouter) via the built-in configuration UI (`⚙️ CONFIG`). Keys are stored locally and symmetrically encrypted in your `data/memory_vault.json` file.
+## 🔐 Security & Privacy
+No API keys are hardcoded in this repository. 
+Upon booting the interface, you can navigate to the **⚙️ CONFIG** menu in the HUD to enter your API Keys (e.g., OpenRouter). 
+These keys are immediately encrypted symmetrically using the `cryptography` library (`core/security.py`) and stored safely in your local `data/memory_vault.json` file. **They will never be exposed or uploaded.**
 
----
-*Created as part of the AI-Powered-Projects initiative. "Sometimes you gotta run before you can walk."*
+<br>
+
+<div align="center">
+  <b>"For You, Sir, Always."</b>
+</div>
