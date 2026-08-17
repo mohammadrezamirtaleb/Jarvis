@@ -16,6 +16,10 @@ PIPER_MODELS = {
         "onnx": "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx?download=true",
         "json": "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json?download=true"
     },
+    "en_US-bryce-medium": {
+        "onnx": "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/bryce/medium/en_US-bryce-medium.onnx?download=true",
+        "json": "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/bryce/medium/en_US-bryce-medium.onnx.json?download=true"
+    },
     "fa_IR-amir-medium": {
         "onnx": "https://huggingface.co/rhasspy/piper-voices/resolve/main/fa/fa_IR/amir/medium/fa_IR-amir-medium.onnx?download=true",
         "json": "https://huggingface.co/rhasspy/piper-voices/resolve/main/fa/fa_IR/amir/medium/fa_IR-amir-medium.onnx.json?download=true"
@@ -65,18 +69,19 @@ async def generate_edge_tts(text: str, voice: str) -> str:
     else:
         edge_voice = voice
 
-    communicate = edge_tts.Communicate(text, edge_voice)
+    # Lower pitch and rate for an extremely masculine, deep voice
+    communicate = edge_tts.Communicate(text, edge_voice, pitch="-25Hz", rate="-10%")
     await communicate.save(str(temp_path))
     return str(temp_path)
 
 async def generate_piper_tts(text: str, voice: str) -> str:
     """Generates Piper TTS audio and returns the filepath."""
     if voice == "en_US-Male":
-        model_id = "en_US-lessac-medium"
+        model_id = "en_US-bryce-medium"
     elif voice == "fa_IR-Male":
         model_id = "fa_IR-amir-medium"
     else:
-        model_id = "en_US-lessac-medium"
+        model_id = "en_US-bryce-medium"
 
     onnx_path, json_path = await download_piper_model(model_id)
     

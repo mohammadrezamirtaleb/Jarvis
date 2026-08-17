@@ -173,16 +173,22 @@ class JarvisAudioEngine {
     }
 
     // Internal: Speak using Browser API
-    _speakBrowser(cleanText, onStarted) {
+    _speakBrowser(text, onStarted = null) {
+        if (!this.voiceEnabled) return;
+
+        // Cancel any ongoing speech
         window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(cleanText);
-        const voice = this._getBestEnglishVoice();
+
+        const utterance = new SpeechSynthesisUtterance(text);
         
-        utterance.lang = voice ? voice.lang : 'en-GB';
-        if (voice) utterance.voice = voice;
-        
-        utterance.rate = 0.93;
-        utterance.pitch = 0.78;
+        // Deepen the voice significantly for a masculine, authoritative tone
+        utterance.pitch = 0.3; // Much lower pitch
+        utterance.rate = 0.85; // Slightly slower, more deliberate pacing
+        utterance.volume = 1.0;
+
+        // Try to select an English Male voice if available
+        let voiceFound = this.voices.find(v => v.name.includes('David') || v.name.includes('Male') || v.name.includes('Guy') || v.name.includes('Mark'));
+        if (voiceFound) utterance.voice = voiceFound;
 
         utterance.onstart = () => {
             this.isSpeaking = true;
