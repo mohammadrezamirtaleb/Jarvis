@@ -204,7 +204,7 @@ class JarvisAudioEngine {
     }
 
     // Synthesize Voice output
-    async speak(text, onStarted = null) {
+    async speak(text, onStarted = null, forceBrowser = false) {
         if (!this.voiceEnabled) return;
         
         const cleanText = text
@@ -223,7 +223,7 @@ class JarvisAudioEngine {
             voice = window.jarvisApp.ttsVoice || 'en_US-Male';
         }
 
-        if (engine === 'browser') {
+        if (engine === 'browser' || forceBrowser) {
             this._speakBrowser(cleanText, onStarted);
             return;
         }
@@ -304,10 +304,11 @@ class JarvisAudioEngine {
         const unlockAudio = () => {
             this._initContext();
             if (!this.hasSuccessfullySpokenGreeting) {
+                // Force browser TTS for zero-delay boot
                 this.speak(greetingText, () => {
                     this.hasSuccessfullySpokenGreeting = true;
                     removeListeners();
-                });
+                }, true);
             }
             removeListeners();
         };
@@ -316,7 +317,7 @@ class JarvisAudioEngine {
         this.speak(greetingText, () => {
             this.hasSuccessfullySpokenGreeting = true;
             removeListeners();
-        });
+        }, true);
 
         // Register one-time listener strictly as fallback if autoplay was restricted
         window.addEventListener('pointerdown', unlockAudio, { once: true });
