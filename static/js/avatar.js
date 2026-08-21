@@ -11,13 +11,13 @@ class AvatarEngine {
 
         this.scene = new THREE.Scene();
         
-        // Dynamic holographic lights
-        this.amberCoreLight = new THREE.PointLight(0xff9900, 3.5, 300);
-        this.amberCoreLight.position.set(0, 25, 25);
+        // Holographic lighting setup
+        this.amberCoreLight = new THREE.PointLight(0xff9900, 3.5, 400);
+        this.amberCoreLight.position.set(0, 26, 30);
         this.scene.add(this.amberCoreLight);
 
-        this.cyanAuraLight = new THREE.PointLight(0x00f0ff, 2.0, 400);
-        this.cyanAuraLight.position.set(0, -20, 60);
+        this.cyanAuraLight = new THREE.PointLight(0x00f0ff, 2.2, 500);
+        this.cyanAuraLight.position.set(0, -20, 80);
         this.scene.add(this.cyanAuraLight);
 
         this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 3000);
@@ -31,7 +31,7 @@ class AvatarEngine {
         // Core system state
         this.particleSystem = null;
         this.isForming = false;
-        this.formedProgress = 0.0;
+        this.isLoaded = false;
         
         // Mouse tracking & Kinematic Parallax
         this.mouseX = 0;
@@ -46,15 +46,15 @@ class AvatarEngine {
         this.speechPhase = 0.0;
 
         // Particle Data Arrays
-        this.particleCount = 42000;
-        this.basePositions = null;
-        this.targetPositions = null;
-        this.currentPositions = null;
-        this.colors = null;
-        this.particleTypes = null; // 0: Contour Scanline, 1: Face/Lip, 2: Veins/Neural, 3: Core, 4: Dust
+        this.particleCount = 52000;
+        this.basePositions = new Float32Array(this.particleCount * 3);
+        this.targetPositions = new Float32Array(this.particleCount * 3);
+        this.currentPositions = new Float32Array(this.particleCount * 3);
+        this.colors = new Float32Array(this.particleCount * 3);
+        this.particleTypes = new Uint8Array(this.particleCount); // 0: Contour Scanline, 1: Face/Lip, 2: Veins/Neural, 3: Core, 4: Dust
 
-        this.buildHumanTorsoWithVessels();
         this.buildUIOverlay();
+        this.loadHumanBustModel();
         this.bindEvents();
         this.animate();
 
@@ -68,7 +68,6 @@ class AvatarEngine {
     }
 
     buildUIOverlay() {
-        // Hologram HUD Header
         const header = document.createElement('div');
         header.style.position = 'absolute';
         header.style.top = '25px';
@@ -87,7 +86,6 @@ class AvatarEngine {
         `;
         this.container.appendChild(header);
 
-        // Close Hologram Button
         this.closeBtn = document.createElement('button');
         this.closeBtn.innerHTML = '⛌ CLOSE AVATAR';
         this.closeBtn.style.position = 'absolute';
@@ -119,23 +117,41 @@ class AvatarEngine {
         this.container.appendChild(this.closeBtn);
     }
 
-    buildHumanTorsoWithVessels() {
-        const count = this.particleCount;
-        this.basePositions = new Float32Array(count * 3);
-        this.targetPositions = new Float32Array(count * 3);
-        this.currentPositions = new Float32Array(count * 3);
-        this.colors = new Float32Array(count * 3);
-        this.particleTypes = new Uint8Array(count); // 0: contour, 1: mouth/jaw, 2: veins/neural, 3: core, 4: dust
+    loadHumanBustModel() {
+        // Load the genuine 3D human scan (Lee Perry-Smith) for facial and cranium precision
+        if (typeof THREE.GLTFLoader !== 'undefined') {
+            const loader = new THREE.GLTFLoader();
+            loader.load('models/LeePerrySmith.glb', (gltf) => {
+                let headGeometry = null;
+                gltf.scene.traverse((child) => {
+                    if (child.isMesh && child.geometry) {
+                        headGeometry = child.geometry;
+                    }
+                });
 
+                if (headGeometry) {
+                    this.buildCombinedAvatar(headGeometry);
+                } else {
+                    this.buildProceduralAvatar();
+                }
+            }, undefined, (err) => {
+                console.warn("GLTFLoader failed, falling back to high-res procedural bust:", err);
+                this.buildProceduralAvatar();
+            });
+        } else {
+            this.buildProceduralAvatar();
+        }
+    }
+
+    buildCombinedAvatar(headGeometry) {
         let idx = 0;
-
+        const count = this.particleCount;
         const colorCyan = new THREE.Color(0x00f0ff);
         const colorTeal = new THREE.Color(0x00d4aa);
         const colorGold = new THREE.Color(0xffbb00);
         const colorAmber = new THREE.Color(0xff8800);
-        const colorCoreHot = new THREE.Color(0xff5500);
+        const colorCoreHot = new THREE.Color(0xff4400);
 
-        // Helper to push a particle
         const addParticle = (x, y, z, type, customColor = null) => {
             if (idx >= count) return;
             const i3 = idx * 3;
@@ -148,9 +164,9 @@ class AvatarEngine {
             this.basePositions[i3 + 1] = y;
             this.basePositions[i3 + 2] = z;
 
-            // Random scattered initial powder position
+            // Random initial powder distribution
             const angle = Math.random() * Math.PI * 2;
-            const radius = 200 + Math.random() * 600;
+            const radius = 220 + Math.random() * 650;
             this.currentPositions[i3] = Math.cos(angle) * radius;
             this.currentPositions[i3 + 1] = (Math.random() - 0.5) * 800;
             this.currentPositions[i3 + 2] = (Math.random() - 0.5) * 600;
@@ -162,18 +178,17 @@ class AvatarEngine {
                 c = customColor;
             } else if (type === 2) { // Veins / Neural
                 c = Math.random() > 0.4 ? colorGold : colorAmber;
-            } else if (type === 3) { // Core Vocal/Brain
-                c = colorAmber.clone().lerp(colorCoreHot, Math.random() * 0.7);
-            } else if (type === 1) { // Face & Lips
-                const distToMouth = Math.sqrt(x * x + (y - 23) * (y - 23) + (z - 20) * (z - 20));
+            } else if (type === 3) { // Core Face / Vocal Vortex
+                c = colorAmber.clone().lerp(colorCoreHot, Math.random() * 0.75);
+            } else if (type === 1) { // Lips, Mouth, Nose
+                const distToMouth = Math.sqrt(x * x + (y - 23) * (y - 23) + (z - 16) * (z - 16));
                 if (distToMouth < 16) {
-                    c = colorGold.clone().lerp(colorAmber, 0.4);
+                    c = colorGold.clone().lerp(colorAmber, 0.45);
                 } else {
-                    c = colorCyan.clone().lerp(colorTeal, Math.random() * 0.3);
+                    c = colorCyan.clone().lerp(colorTeal, 0.2);
                 }
-            } else { // Contour scanlines
-                // Color gradient along Y height: shoulders cyan/teal, upper head glowing electric cyan
-                c = colorCyan.clone().lerp(colorTeal, Math.min(1, Math.max(0, (-y) / 80.0)));
+            } else { // Torso & Scanlines
+                c = colorCyan.clone().lerp(colorTeal, Math.min(1, Math.max(0, (-y) / 60.0)));
             }
 
             this.colors[i3] = c.r;
@@ -183,297 +198,324 @@ class AvatarEngine {
             idx++;
         };
 
-        // =========================================================================
-        // 1. GENERATE UPPER TORSO, SHOULDERS & CHEST CONTOURS (Horizontal Scanlines)
-        // =========================================================================
-        const torsoSlices = 75;
+        // 1. EXTRACT VERTICES FROM REAL HUMAN 3D SCAN
+        const rawPositions = headGeometry.attributes.position.array;
+        const scale = 5.8;
+        const yOffset = 28;
+
+        for (let i = 0; i < rawPositions.length; i += 3) {
+            let hx = rawPositions[i] * scale;
+            let hy = rawPositions[i + 1] * scale + yOffset;
+            let hz = rawPositions[i + 2] * scale;
+
+            // Classify mouth/lip vertices for speech mimic
+            const isMouth = (hy > 16 && hy < 27 && Math.abs(hx) < 14 && hz > 8);
+            const type = isMouth ? 1 : 0;
+
+            addParticle(hx, hy, hz, type);
+
+            // Add interpolated particles for higher holographic density on face
+            if (hz > 4 && Math.random() > 0.35) {
+                addParticle(
+                    hx + (Math.random() - 0.5) * 1.2,
+                    hy + (Math.random() - 0.5) * 1.2,
+                    hz + (Math.random() - 0.5) * 1.2,
+                    type
+                );
+            }
+        }
+
+        // 2. CURVED ANATOMICAL SHOULDERS, CLAVICLES & UPPER TORSO (BUST)
+        // Generates organic flowing horizontal contour scanlines
+        const torsoSlices = 95;
         for (let s = 0; s < torsoSlices; s++) {
             const vNorm = s / torsoSlices;
-            const y = -80 + vNorm * 70; // Y from -80 to -10
+            const y = -65 + vNorm * 72; // Y from -65 to +7 (connecting seamlessly to neck)
 
-            // Width of torso at height Y
-            let halfWidth = 55;
-            let depth = 22;
-
-            if (y > -25) { // Shoulders & Clavicle area
-                const shoulderT = (-y - 10) / 15; // 0 at neck base, 1 at shoulder tip
-                halfWidth = 24 + shoulderT * 70; // Spreads wide to 94 at shoulder joints
-                depth = 18 + Math.sin(shoulderT * Math.PI) * 8;
-            } else { // Chest & Ribcage area
-                const chestT = (-y - 25) / 55;
-                halfWidth = 94 - chestT * 32; // Tapers down from shoulders (94) to waist (62)
-                depth = 26 - chestT * 8;
-            }
-
-            const pointsPerSlice = Math.floor(180 + halfWidth * 2.2);
-            for (let p = 0; p < pointsPerSlice; p++) {
-                const u = (p / pointsPerSlice) * Math.PI * 2;
-                
-                // Elliptical cross-section with pectoral shaping in front (Z > 0)
-                let cosU = Math.cos(u);
-                let sinU = Math.sin(u);
-                
-                let px = cosU * halfWidth;
-                let pz = sinU * depth;
-
-                // Front chest / pectoral muscle curvature shaping
-                if (pz > 0 && y < -15 && y > -55) {
-                    const pect = Math.sin(Math.abs(px) / halfWidth * Math.PI) * 7.5;
-                    pz += pect;
-                }
-                
-                // Clavicle bone ridge protrusion
-                if (pz > 0 && y > -20 && y < -10) {
-                    const clavicle = Math.cos((px / halfWidth) * Math.PI * 1.5) * 4.5;
-                    pz += Math.max(0, clavicle);
-                }
-
-                // Add subtle organic particle noise
-                px += (Math.random() - 0.5) * 1.8;
-                const py = y + (Math.random() - 0.5) * 1.2;
-                pz += (Math.random() - 0.5) * 1.8;
-
-                addParticle(px, py, pz, 0);
-            }
-        }
-
-        // =========================================================================
-        // 2. GENERATE NECK & THROAT
-        // =========================================================================
-        const neckSlices = 35;
-        for (let s = 0; s < neckSlices; s++) {
-            const vNorm = s / neckSlices;
-            const y = -10 + vNorm * 30; // Y from -10 to +20
-
-            // Neck radius & natural anatomical forward inclination
-            const neckRadiusX = 18 - vNorm * 3.5;
-            const neckRadiusZ = 16 - vNorm * 2.5;
-            const neckCenterZ = 2 + (1 - vNorm) * 4.0; // slight forward curve
-
-            const pointsPerSlice = 140;
-            for (let p = 0; p < pointsPerSlice; p++) {
-                const u = (p / pointsPerSlice) * Math.PI * 2;
-                let px = Math.cos(u) * neckRadiusX;
-                let pz = neckCenterZ + Math.sin(u) * neckRadiusZ;
-
-                // Adam's Apple protrusion in anterior throat
-                if (Math.abs(px) < 6 && pz > 0 && y > 2 && y < 12) {
-                    pz += 3.5 * Math.cos((px / 6) * Math.PI * 0.5);
-                }
-
-                // Sternocleidomastoid muscle ridges
-                const scmLeft = Math.abs(px - (8 + (20 - y) * 0.4));
-                const scmRight = Math.abs(px + (8 + (20 - y) * 0.4));
-                if (pz > 0 && (scmLeft < 4 || scmRight < 4)) {
-                    pz += 2.2;
-                }
-
-                addParticle(px + (Math.random() - 0.5), y + (Math.random() - 0.5), pz + (Math.random() - 0.5), 0);
-            }
-        }
-
-        // =========================================================================
-        // 3. GENERATE HUMAN HEAD & CRANIUM (Horizontal Contour Scanlines)
-        // =========================================================================
-        const headSlices = 80;
-        for (let s = 0; s < headSlices; s++) {
-            const vNorm = s / headSlices;
-            const y = 18 + vNorm * 58; // Y from 18 to 76
-
-            let rx = 24;
-            let rz = 26;
+            // Natural Anatomical Shoulder & Torso Width Calculation
+            let halfWidth = 16;
+            let depth = 16;
             let centerZ = 0;
 
-            if (y > 50) { // Cranial Dome
-                const domeT = (y - 50) / 26;
-                const domeRadius = Math.sqrt(Math.max(0, 1 - domeT * domeT));
-                rx = 26 * domeRadius;
-                rz = 28 * domeRadius;
-                centerZ = -4 * domeT;
-            } else if (y > 32) { // Forehead, Eyes, Temples
-                rx = 25.5;
-                rz = 26.5;
+            if (y >= 4) { // Neck base connection
+                halfWidth = 15 + (7 - y) * 1.2;
+                depth = 15;
                 centerZ = 2;
-            } else { // Cheeks, Chin, Jaw
-                const jawT = (32 - y) / 14;
-                rx = 25.5 - jawT * 12.0; // Narrowing into chin
-                rz = 26.5 - jawT * 4.0;
-                centerZ = 4 + jawT * 3;
+            } else if (y >= -16) { // Trapezius slope & Clavicles to Shoulder Caps
+                const trapT = (4 - y) / 20.0; // 0 at neck, 1 at shoulders
+                // S-curve shoulder slope
+                const smoothTrap = Math.sin(trapT * Math.PI * 0.5);
+                halfWidth = 18 + Math.pow(smoothTrap, 1.2) * 68; // Widens out to 86 at shoulders
+                depth = 17 + Math.sin(trapT * Math.PI) * 7.5;
+                centerZ = 2 + Math.sin(trapT * Math.PI) * 4;
+            } else { // Chest, Pectorals & Ribcage
+                const chestT = (-16 - y) / 49.0;
+                halfWidth = 86 - chestT * 28; // Tapers down to ~58 at mid-torso
+                depth = 24.5 - chestT * 6;
+                centerZ = 2 - chestT * 3;
             }
 
-            const pointsPerSlice = 200;
+            const pointsPerSlice = Math.floor(220 + halfWidth * 2.8);
             for (let p = 0; p < pointsPerSlice; p++) {
                 const u = (p / pointsPerSlice) * Math.PI * 2;
-                let px = Math.cos(u) * rx;
-                let pz = centerZ + Math.sin(u) * rz;
+                let cosU = Math.cos(u);
+                let sinU = Math.sin(u);
 
-                // Eye Socket Recesses
-                if (y > 36 && y < 45 && pz > 14 && (Math.abs(px - 12) < 7 || Math.abs(px + 12) < 7)) {
-                    pz -= 4.5;
+                let px = cosU * halfWidth;
+                let pz = centerZ + sinU * depth;
+
+                // Anatomical Pectoral muscle curves
+                if (pz > 0 && y < -12 && y > -45) {
+                    const pect = Math.sin(Math.abs(px) / halfWidth * Math.PI) * 6.5;
+                    pz += pect;
                 }
 
-                // Nose Bridge & Tip Protrusion
-                if (y > 25 && y < 40 && Math.abs(px) < 7 && pz > 15) {
-                    const noseT = 1 - Math.abs(px) / 7;
-                    const noseY = 1 - Math.abs(y - 31) / 9;
-                    pz += 8.5 * Math.max(0, noseT * noseY);
+                // Clavicle collarbone ridges
+                if (pz > 0 && y >= -18 && y <= -8) {
+                    const clav = Math.cos((px / halfWidth) * Math.PI * 1.5) * 4.5;
+                    pz += Math.max(0, clav);
                 }
 
-                // Cheekbone Definition
-                if (y > 28 && y < 38 && Math.abs(px) > 16 && pz > 8) {
-                    px *= 1.08;
-                    pz += 2.5;
+                // Deltoid shoulder rounding
+                if (Math.abs(px) > 65 && y >= -25 && y <= -12) {
+                    pz += Math.sin((Math.abs(px) - 65) / 21 * Math.PI) * 4.0;
                 }
 
-                addParticle(px + (Math.random() - 0.5), y + (Math.random() - 0.5), pz + (Math.random() - 0.5), 0);
+                addParticle(
+                    px + (Math.random() - 0.5) * 1.4,
+                    y + (Math.random() - 0.5) * 1.1,
+                    pz + (Math.random() - 0.5) * 1.4,
+                    0
+                );
             }
         }
 
-        // =========================================================================
-        // 4. HIGH-PRECISION ANATOMICAL LIPS & MOUTH STRUCTURE (Speech Mimic Layer)
-        // =========================================================================
-        // Generates densely sampled upper lip, lower lip, oral cavity and chin
-        const mouthLayers = 28;
-        for (let m = 0; m < mouthLayers; m++) {
-            const t = m / mouthLayers;
-            const yMouth = 19 + t * 9; // Y from 19 to 28
+        // 3. GLOWING INTERNAL VASCULAR & NEURAL BRANCHING TREE ("رگ‌های داخل بدن")
+        this.generateVascularNetwork(addParticle);
 
-            const lipPoints = 90;
-            for (let lp = 0; lp < lipPoints; lp++) {
-                const u = (lp / lipPoints) * 2 - 1; // -1 to +1 across mouth width
-                const x = u * 14.5; // Lip width ~29 units
-
-                let y = yMouth;
-                let z = 22.5;
-
-                const arch = Math.cos(u * Math.PI * 0.5); // Curves back at corners
-
-                if (yMouth >= 24) { // Upper Lip & Cupid's Bow
-                    const bow = Math.sin(Math.abs(u) * Math.PI * 2) * 1.0;
-                    y = 25.5 + bow * 0.8;
-                    z = 22.0 + arch * 4.5;
-                } else { // Lower Lip
-                    y = 21.8 - (1 - Math.abs(u)) * 1.5;
-                    z = 21.5 + arch * 5.0;
-                }
-
-                // Inner oral cavity depth
-                z -= (1 - Math.abs(u)) * 2.0;
-
-                // Mark as Speech Mimic particle (type 1)
-                addParticle(x + (Math.random() - 0.5) * 0.6, y + (Math.random() - 0.5) * 0.6, z + (Math.random() - 0.5) * 0.6, 1);
-            }
-        }
-
-        // =========================================================================
-        // 5. GLOWING VASCULAR & NEURAL BRANCHING PATHWAYS ("رگ‌های داخلی انسان")
-        // =========================================================================
-        // Procedural 3D spline tree generation for carotid arteries, subclavian,
-        // thoracic/cardiac plexus, and cranial nerves matching the screenshot!
-        const generateVesselBranch = (startPt, endPt, branchCount, jitter = 2.5, depth = 0) => {
-            const steps = 60;
-            const current = new THREE.Vector3().copy(startPt);
-            const dir = new THREE.Vector3().subVectors(endPt, startPt).multiplyScalar(1 / steps);
-
-            for (let s = 0; s <= steps; s++) {
-                const prog = s / steps;
-                const pt = new THREE.Vector3().copy(startPt).lerp(endPt, prog);
-
-                // Add organic meandering curve to the blood vessel
-                pt.x += Math.sin(prog * Math.PI * 4 + depth) * jitter;
-                pt.y += Math.cos(prog * Math.PI * 3 + depth) * (jitter * 0.6);
-                pt.z += Math.sin(prog * Math.PI * 5 + depth * 2) * (jitter * 0.8);
-
-                // Deposit cluster of glowing vein particles
-                const veinCluster = 3 + Math.floor(Math.random() * 3);
-                for (let k = 0; k < veinCluster; k++) {
-                    const vx = pt.x + (Math.random() - 0.5) * 1.8;
-                    const vy = pt.y + (Math.random() - 0.5) * 1.8;
-                    const vz = pt.z + (Math.random() - 0.5) * 1.8;
-                    addParticle(vx, vy, vz, 2);
-                }
-
-                // Secondary branching
-                if (branchCount > 0 && s % 18 === 0 && s > 10 && s < steps - 5) {
-                    const sideDir = (Math.random() > 0.5 ? 1 : -1);
-                    const subEnd = new THREE.Vector3(
-                        pt.x + sideDir * (15 + Math.random() * 25),
-                        pt.y - (8 + Math.random() * 20),
-                        pt.z + (Math.random() - 0.5) * 8
-                    );
-                    generateVesselBranch(pt, subEnd, branchCount - 1, jitter * 0.7, depth + 1);
-                }
-            }
-        };
-
-        // Carotid & Jugular Main Trunks (Left & Right Throat)
-        generateVesselBranch(new THREE.Vector3(-6, 32, 14), new THREE.Vector3(-10, -18, 16), 2, 2.2);
-        generateVesselBranch(new THREE.Vector3(6, 32, 14), new THREE.Vector3(10, -18, 16), 2, 2.2);
-
-        // Central Thyroid & Vocal Cord Plexus
-        generateVesselBranch(new THREE.Vector3(0, 26, 16), new THREE.Vector3(0, -5, 14), 2, 1.8);
-
-        // Aortic Arch & Cardiac Plexus (Mid-Chest Center)
-        generateVesselBranch(new THREE.Vector3(0, -15, 15), new THREE.Vector3(0, -55, 18), 3, 3.5);
-
-        // Subclavian Arteries (Flowing from throat across clavicles to shoulders)
-        generateVesselBranch(new THREE.Vector3(-8, -12, 14), new THREE.Vector3(-75, -28, 8), 3, 3.0);
-        generateVesselBranch(new THREE.Vector3(8, -12, 14), new THREE.Vector3(75, -28, 8), 3, 3.0);
-
-        // Intercostal Pectoral Branches (Sweeping across ribs and chest)
-        generateVesselBranch(new THREE.Vector3(-5, -28, 18), new THREE.Vector3(-45, -65, 12), 2, 2.8);
-        generateVesselBranch(new THREE.Vector3(5, -28, 18), new THREE.Vector3(45, -65, 12), 2, 2.8);
-
-        // Cranial Neural Crown (Ascending into forehead and temples)
-        generateVesselBranch(new THREE.Vector3(-4, 38, 16), new THREE.Vector3(-18, 62, 12), 2, 2.0);
-        generateVesselBranch(new THREE.Vector3(4, 38, 16), new THREE.Vector3(18, 62, 12), 2, 2.0);
-
-        // =========================================================================
-        // 6. LUMINOUS QUANTUM CORE & VOCAL ENERGY VORTEX (Speech Aura)
-        // =========================================================================
-        const coreParticleCount = 2800;
-        for (let c = 0; c < coreParticleCount; c++) {
-            const rad = Math.random() * 16;
+        // 4. LUMINOUS FACIAL ENERGY VORTEX (Center Core Glow)
+        const coreCount = 3800;
+        for (let c = 0; c < coreCount; c++) {
+            const rad = Math.random() * 18;
             const phi = Math.random() * Math.PI * 2;
             const theta = Math.random() * Math.PI;
 
-            // Centered at speech & facial energy locus (y=26, z=14)
             const cx = Math.sin(theta) * Math.cos(phi) * (rad * 0.9);
-            const cy = 26 + Math.cos(theta) * (rad * 1.3);
-            const cz = 14 + Math.sin(theta) * Math.sin(phi) * (rad * 0.8);
+            const cy = 27 + Math.cos(theta) * (rad * 1.3);
+            const cz = 10 + Math.sin(theta) * Math.sin(phi) * (rad * 0.75);
 
             addParticle(cx, cy, cz, 3);
         }
 
-        // =========================================================================
-        // 7. AMBIENT CYBERNETIC EMBERS & HOLOGRAPHIC DUST
-        // =========================================================================
+        // 5. FILL REMAINING WITH AMBIENT CYBERNETIC EMBERS
         while (idx < count) {
-            const ax = (Math.random() - 0.5) * 320;
-            const ay = -90 + Math.random() * 200;
-            const az = (Math.random() - 0.5) * 260;
+            const ax = (Math.random() - 0.5) * 360;
+            const ay = -85 + Math.random() * 200;
+            const az = (Math.random() - 0.5) * 280;
             const dustCol = Math.random() > 0.6 ? colorGold : colorCyan;
             addParticle(ax, ay, az, 4, dustCol);
         }
 
-        // Construct Three.js BufferGeometry
+        this.finishMeshConstruction();
+    }
+
+    buildProceduralAvatar() {
+        // High-precision anatomical procedural fallback
+        let idx = 0;
+        const count = this.particleCount;
+        const colorCyan = new THREE.Color(0x00f0ff);
+        const colorTeal = new THREE.Color(0x00d4aa);
+        const colorGold = new THREE.Color(0xffbb00);
+        const colorAmber = new THREE.Color(0xff8800);
+        const colorCoreHot = new THREE.Color(0xff4400);
+
+        const addParticle = (x, y, z, type, customColor = null) => {
+            if (idx >= count) return;
+            const i3 = idx * 3;
+
+            this.targetPositions[i3] = x;
+            this.targetPositions[i3 + 1] = y;
+            this.targetPositions[i3 + 2] = z;
+
+            this.basePositions[i3] = x;
+            this.basePositions[i3 + 1] = y;
+            this.basePositions[i3 + 2] = z;
+
+            const angle = Math.random() * Math.PI * 2;
+            const radius = 220 + Math.random() * 650;
+            this.currentPositions[i3] = Math.cos(angle) * radius;
+            this.currentPositions[i3 + 1] = (Math.random() - 0.5) * 800;
+            this.currentPositions[i3 + 2] = (Math.random() - 0.5) * 600;
+
+            this.particleTypes[idx] = type;
+
+            let c = colorCyan;
+            if (customColor) {
+                c = customColor;
+            } else if (type === 2) {
+                c = Math.random() > 0.4 ? colorGold : colorAmber;
+            } else if (type === 3) {
+                c = colorAmber.clone().lerp(colorCoreHot, Math.random() * 0.75);
+            } else if (type === 1) {
+                c = colorGold.clone().lerp(colorAmber, 0.45);
+            } else {
+                c = colorCyan.clone().lerp(colorTeal, Math.min(1, Math.max(0, (-y) / 60.0)));
+            }
+
+            this.colors[i3] = c.r;
+            this.colors[i3 + 1] = c.g;
+            this.colors[i3 + 2] = c.b;
+
+            idx++;
+        };
+
+        // Procedural Head Slices
+        for (let s = 0; s < 70; s++) {
+            const vNorm = s / 70;
+            const y = 8 + vNorm * 48; // Y from 8 to 56
+            let rx = 22;
+            let rz = 24;
+
+            if (y > 40) {
+                const domeT = (y - 40) / 16;
+                const rad = Math.sqrt(Math.max(0, 1 - domeT * domeT));
+                rx = 23 * rad;
+                rz = 25 * rad;
+            } else if (y > 22) {
+                rx = 23;
+                rz = 24;
+            } else {
+                const jawT = (22 - y) / 14;
+                rx = 23 - jawT * 9;
+                rz = 24 - jawT * 5;
+            }
+
+            const pts = 180;
+            for (let p = 0; p < pts; p++) {
+                const u = (p / pts) * Math.PI * 2;
+                let px = Math.cos(u) * rx;
+                let pz = Math.sin(u) * rz;
+
+                if (y > 26 && y < 38 && Math.abs(px) < 6 && pz > 14) pz += 7.5; // Nose
+                if (y > 18 && y < 27 && Math.abs(px) < 13 && pz > 12) {
+                    addParticle(px, y, pz, 1); // Lips/Mouth
+                } else {
+                    addParticle(px, y, pz, 0);
+                }
+            }
+        }
+
+        // Procedural Torso & Shoulders
+        for (let s = 0; s < 85; s++) {
+            const vNorm = s / 85;
+            const y = -65 + vNorm * 73;
+            let halfWidth = 16;
+            let depth = 16;
+
+            if (y >= 4) {
+                halfWidth = 15;
+            } else if (y >= -16) {
+                const trapT = (4 - y) / 20.0;
+                halfWidth = 16 + Math.pow(trapT, 1.2) * 70;
+                depth = 17 + Math.sin(trapT * Math.PI) * 7;
+            } else {
+                const chestT = (-16 - y) / 49.0;
+                halfWidth = 86 - chestT * 28;
+                depth = 24 - chestT * 6;
+            }
+
+            const pts = Math.floor(200 + halfWidth * 2.5);
+            for (let p = 0; p < pts; p++) {
+                const u = (p / pts) * Math.PI * 2;
+                let px = Math.cos(u) * halfWidth;
+                let pz = Math.sin(u) * depth;
+                addParticle(px, y, pz, 0);
+            }
+        }
+
+        this.generateVascularNetwork(addParticle);
+
+        while (idx < count) {
+            const ax = (Math.random() - 0.5) * 360;
+            const ay = -85 + Math.random() * 200;
+            const az = (Math.random() - 0.5) * 280;
+            addParticle(ax, ay, az, 4);
+        }
+
+        this.finishMeshConstruction();
+    }
+
+    generateVascularNetwork(addParticle) {
+        // Procedural 3D branching vascular and neural tree matching the screenshot
+        const generateBranch = (startPt, endPt, branchCount, jitter = 2.4, depth = 0) => {
+            const steps = 55;
+            for (let s = 0; s <= steps; s++) {
+                const prog = s / steps;
+                const pt = new THREE.Vector3().copy(startPt).lerp(endPt, prog);
+
+                pt.x += Math.sin(prog * Math.PI * 4 + depth) * jitter;
+                pt.y += Math.cos(prog * Math.PI * 3 + depth) * (jitter * 0.6);
+                pt.z += Math.sin(prog * Math.PI * 5 + depth * 2) * (jitter * 0.8);
+
+                const cluster = 3 + Math.floor(Math.random() * 3);
+                for (let k = 0; k < cluster; k++) {
+                    addParticle(
+                        pt.x + (Math.random() - 0.5) * 1.8,
+                        pt.y + (Math.random() - 0.5) * 1.8,
+                        pt.z + (Math.random() - 0.5) * 1.8,
+                        2
+                    );
+                }
+
+                if (branchCount > 0 && s % 16 === 0 && s > 8 && s < steps - 6) {
+                    const sideDir = (Math.random() > 0.5 ? 1 : -1);
+                    const subEnd = new THREE.Vector3(
+                        pt.x + sideDir * (15 + Math.random() * 28),
+                        pt.y - (10 + Math.random() * 22),
+                        pt.z + (Math.random() - 0.5) * 8
+                    );
+                    generateBranch(pt, subEnd, branchCount - 1, jitter * 0.7, depth + 1);
+                }
+            }
+        };
+
+        // Carotid Arteries & Jugular Lines (Throat / Neck)
+        generateBranch(new THREE.Vector3(-6, 32, 10), new THREE.Vector3(-10, -14, 12), 2, 2.2);
+        generateBranch(new THREE.Vector3(6, 32, 10), new THREE.Vector3(10, -14, 12), 2, 2.2);
+
+        // Vocal Cord & Thyroid Plexus
+        generateBranch(new THREE.Vector3(0, 24, 12), new THREE.Vector3(0, -4, 10), 2, 1.8);
+
+        // Aortic Arch & Cardiac Center (Mid-Chest)
+        generateBranch(new THREE.Vector3(0, -12, 11), new THREE.Vector3(0, -52, 14), 3, 3.2);
+
+        // Subclavian Vessels (Spreading across collarbones to shoulders)
+        generateBranch(new THREE.Vector3(-8, -10, 11), new THREE.Vector3(-72, -24, 6), 3, 3.0);
+        generateBranch(new THREE.Vector3(8, -10, 11), new THREE.Vector3(72, -24, 6), 3, 3.0);
+
+        // Intercostal Thoracic Branches (Ribs and Chest)
+        generateBranch(new THREE.Vector3(-6, -24, 14), new THREE.Vector3(-42, -58, 8), 2, 2.5);
+        generateBranch(new THREE.Vector3(6, -24, 14), new THREE.Vector3(42, -58, 8), 2, 2.5);
+    }
+
+    finishMeshConstruction() {
         const geometry = new THREE.BufferGeometry();
         geometry.setAttribute('position', new THREE.BufferAttribute(this.currentPositions, 3));
         geometry.setAttribute('color', new THREE.BufferAttribute(this.colors, 3));
 
-        // High-definition Point Material with Additive Blending
         const material = new THREE.PointsMaterial({
-            size: 0.85,
+            size: 0.9,
             vertexColors: true,
             transparent: true,
-            opacity: 0.88,
+            opacity: 0.9,
             blending: THREE.AdditiveBlending,
             depthWrite: false
         });
 
         this.particleSystem = new THREE.Points(geometry, material);
-        this.particleSystem.position.y = 8; // Center bust in view
+        this.particleSystem.position.y = 8;
         this.scene.add(this.particleSystem);
+        this.isLoaded = true;
     }
 
     bindEvents() {
@@ -484,12 +526,10 @@ class AvatarEngine {
         });
 
         document.addEventListener('mousemove', (e) => {
-            // Normalized Device Coordinates [-1, 1]
             this.mouseX = (e.clientX / window.innerWidth) * 2 - 1;
             this.mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
         });
 
-        // Close on ESC key
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && this.isForming) {
                 this.hideAvatar();
@@ -502,7 +542,6 @@ class AvatarEngine {
         this.container.style.opacity = '1';
         this.container.style.pointerEvents = 'auto';
         this.isForming = true;
-        this.formedProgress = 0.0;
 
         if (window.jarvisAudio) window.jarvisAudio.playBoot();
     }
@@ -512,15 +551,13 @@ class AvatarEngine {
         this.container.style.opacity = '0';
         this.container.style.pointerEvents = 'none';
         this.isForming = false;
-        this.formedProgress = 0.0;
 
-        // Scatter particles back to chaotic powder cloud
         if (this.particleSystem) {
             const count = this.particleCount;
             for (let i = 0; i < count; i++) {
                 const i3 = i * 3;
                 const angle = Math.random() * Math.PI * 2;
-                const radius = 200 + Math.random() * 600;
+                const radius = 220 + Math.random() * 650;
                 this.currentPositions[i3] = Math.cos(angle) * radius;
                 this.currentPositions[i3 + 1] = (Math.random() - 0.5) * 800;
                 this.currentPositions[i3 + 2] = (Math.random() - 0.5) * 600;
@@ -534,47 +571,41 @@ class AvatarEngine {
 
         const time = performance.now() * 0.001;
 
-        // Smooth Mouse Parallax Tracking
-        this.targetRotationY = this.mouseX * 0.38; // Head yaw
-        this.targetRotationX = -this.mouseY * 0.22; // Head pitch
+        // Smooth Parallax Mouse Tracking
+        this.targetRotationY = this.mouseX * 0.36;
+        this.targetRotationX = -this.mouseY * 0.20;
         
         this.currentRotationY += (this.targetRotationY - this.currentRotationY) * 0.06;
         this.currentRotationX += (this.targetRotationX - this.currentRotationX) * 0.06;
 
-        if (this.particleSystem) {
+        if (this.particleSystem && this.isLoaded) {
             this.particleSystem.rotation.y = this.currentRotationY;
             this.particleSystem.rotation.x = this.currentRotationX;
 
-            // Speech Mimic Intensity Calculation
-            let rawSpeechIntensity = 0.0;
+            // Speech Mimic Audio Intensity
+            let rawSpeech = 0.0;
             if (window.jarvisAudio && window.jarvisAudio.getSpeechIntensity) {
-                rawSpeechIntensity = window.jarvisAudio.getSpeechIntensity();
+                rawSpeech = window.jarvisAudio.getSpeechIntensity();
             } else if (window.jarvisAudio && window.jarvisAudio.isSpeaking) {
-                rawSpeechIntensity = Math.abs(Math.sin(time * 12.0)) * 0.8;
+                rawSpeech = Math.abs(Math.sin(time * 14.0)) * 0.8;
             }
 
-            // Smooth speech dampening
-            this.smoothSpeechIntensity += (rawSpeechIntensity - this.smoothSpeechIntensity) * 0.25;
+            this.smoothSpeechIntensity += (rawSpeech - this.smoothSpeechIntensity) * 0.28;
             this.speechPhase += (0.15 + this.smoothSpeechIntensity * 0.35);
 
             const speech = this.smoothSpeechIntensity;
             const phoneme = Math.sin(this.speechPhase * 5.5);
 
-            // Core light breathing & speech glow reaction
             if (this.amberCoreLight) {
-                this.amberCoreLight.intensity = 2.5 + speech * 4.5 + Math.sin(time * 3) * 0.4;
+                this.amberCoreLight.intensity = 2.5 + speech * 4.0 + Math.sin(time * 3) * 0.4;
             }
 
-            // Animate Particles
             if (this.isForming) {
                 const count = this.particleCount;
                 const pos = this.currentPositions;
-                const target = this.targetPositions;
                 const base = this.basePositions;
                 const types = this.particleTypes;
-
-                // Lerp speed toward assembled shape
-                const lerpSpeed = 0.035;
+                const lerpSpeed = 0.038;
 
                 for (let i = 0; i < count; i++) {
                     const i3 = i * 3;
@@ -584,65 +615,55 @@ class AvatarEngine {
                     let ty = base[i3 + 1];
                     let tz = base[i3 + 2];
 
-                    // 1. Scanline Wave Ripple across the Torso/Head
+                    // 1. Scanline Wave Ripple across the Body
                     if (type === 0) {
-                        const wave = Math.sin(ty * 0.16 - time * 3.0) * 1.1;
+                        const wave = Math.sin(ty * 0.14 - time * 2.8) * 1.1;
                         tz += wave;
                     }
 
-                    // 2. Dynamic Speech Mimic & Natural Mouth Articulation
-                    if (type === 1) { // Lips, Jaw & Oral Cavity
-                        // Lower lip & Jaw drop
-                        if (ty < 24.5) {
-                            const jawDrop = speech * 4.8 * (0.6 + Math.abs(phoneme) * 0.4);
+                    // 2. Natural Speech Mimic & Lip Articulation
+                    if (type === 1) {
+                        if (ty < 23.5) { // Lower Lip & Jaw drop
+                            const jawDrop = speech * 4.6 * (0.65 + Math.abs(phoneme) * 0.35);
                             ty -= jawDrop;
                             tz += Math.sin(phoneme * Math.PI) * 1.2 * speech;
-                        } 
-                        // Upper lip raises subtly
-                        else if (ty >= 24.5) {
-                            ty += speech * 1.4 * Math.max(0, phoneme);
+                        } else if (ty >= 23.5) { // Upper Lip
+                            ty += speech * 1.3 * Math.max(0, phoneme);
                         }
-
-                        // Lip corners stretch horizontally during vowels
-                        tx *= (1.0 + speech * 0.18 * phoneme);
+                        tx *= (1.0 + speech * 0.16 * phoneme); // Lip corner stretch
                     }
 
                     // 3. Glowing Vascular Action Potential Pulses
-                    if (type === 2) { // Veins / Arteries
-                        // Traveling electrical nerve pulse along vessels
-                        const veinPulse = Math.sin((tx + ty + tz) * 0.25 - time * 8.0);
-                        if (veinPulse > 0.7) {
-                            tx += (Math.random() - 0.5) * 0.8;
-                            ty += (Math.random() - 0.5) * 0.8;
-                            tz += (Math.random() - 0.5) * 0.8 + 0.6;
+                    if (type === 2) {
+                        const pulse = Math.sin((tx + ty + tz) * 0.22 - time * 7.5);
+                        if (pulse > 0.72) {
+                            tz += 0.8;
                         }
-                        // Speech surge through neck & chest veins
                         if (speech > 0.1) {
-                            tz += Math.sin(time * 16.0 + ty * 0.1) * (speech * 1.4);
+                            tz += Math.sin(time * 15.0 + ty * 0.12) * (speech * 1.3);
                         }
                     }
 
-                    // 4. Vocal Core Energy Vortex Modulation
+                    // 4. Vocal Core Energy Vortex
                     if (type === 3) {
-                        const coreExpansion = 1.0 + speech * 0.35 + Math.sin(time * 4.0) * 0.08;
+                        const coreExpansion = 1.0 + speech * 0.32 + Math.sin(time * 4.0) * 0.08;
                         tx = base[i3] * coreExpansion;
-                        ty = 26 + (base[i3 + 1] - 26) * coreExpansion;
-                        tz = 14 + (base[i3 + 2] - 14) * coreExpansion;
+                        ty = 27 + (base[i3 + 1] - 27) * coreExpansion;
+                        tz = 10 + (base[i3 + 2] - 10) * coreExpansion;
                     }
 
-                    // 5. Ambient Cybernetic Embers Drifting
+                    // 5. Ambient Cybernetic Embers
                     if (type === 4) {
                         ty += Math.sin(time + tx) * 0.4;
                         tx += Math.cos(time * 0.8 + ty) * 0.4;
                     }
 
-                    // Natural organic micro-breathing motion of the chest
-                    if (ty < -10) {
-                        const breath = Math.sin(time * 1.8) * 1.2;
-                        tz += breath * Math.max(0, ( -10 - ty ) / 60);
+                    // Natural chest breathing
+                    if (ty < 0) {
+                        const breath = Math.sin(time * 1.8) * 1.1;
+                        tz += breath * Math.max(0, (-ty) / 50.0);
                     }
 
-                    // Interpolate current position to target position
                     pos[i3] += (tx - pos[i3]) * lerpSpeed;
                     pos[i3 + 1] += (ty - pos[i3 + 1]) * lerpSpeed;
                     pos[i3 + 2] += (tz - pos[i3 + 2]) * lerpSpeed;
@@ -656,7 +677,6 @@ class AvatarEngine {
     }
 }
 
-// Global initialization
 document.addEventListener('DOMContentLoaded', () => {
     window.jarvisAvatar = new AvatarEngine();
     
