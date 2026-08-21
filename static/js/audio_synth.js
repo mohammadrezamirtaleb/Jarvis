@@ -18,8 +18,35 @@ class JarvisAudioEngine {
         this.audioQueue = [];
         this.isPlayingQueue = false;
         this.currentAudioElement = null;
+        this.analyser = null;
+        this.dataArray = null;
 
         this._initVoices();
+    }
+
+    getSpeechIntensity() {
+        if (!this.isSpeaking) return 0.0;
+        
+        if (this.analyser && this.dataArray) {
+            this.analyser.getByteFrequencyData(this.dataArray);
+            let sum = 0;
+            const count = Math.min(32, this.dataArray.length);
+            for (let i = 2; i < count; i++) {
+                sum += this.dataArray[i];
+            }
+            const avg = sum / (count - 2);
+            if (avg > 5) {
+                return Math.min(1.0, (avg / 120.0));
+            }
+        }
+        
+        // Natural speech phonetic cadence simulation
+        const t = performance.now() * 0.001;
+        const syllable = Math.sin(t * 13.0) * Math.sin(t * 6.5);
+        const breath = Math.sin(t * 3.5) * 0.4 + 0.6;
+        const micro = Math.sin(t * 26.0) * 0.15;
+        const val = (Math.abs(syllable) * breath + micro);
+        return Math.max(0.1, Math.min(1.0, val * 1.3));
     }
 
     _initVoices() {
