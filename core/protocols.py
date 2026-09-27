@@ -5,7 +5,7 @@ Author: Stark Industries Mark-85 AI Core
 
 import time
 from typing import Dict, Any, List
-from .system_tools import get_system_vitals, capture_desktop_screenshot, launch_application
+from .system_tools import get_system_vitals, capture_desktop_screenshot, launch_application, SCREENSHOTS_DIR
 from .memory_vault import vault
 from .ocr_engine import extract_ocr_text
 
@@ -15,14 +15,16 @@ PROTOCOLS = {
         "name": "Diagnostic Sweep",
         "code": "PROTOCOL-01-SWEEP",
         "icon": "⚡",
+        "google_icon": "health_and_safety",
         "description": "Perform full telemetry scan of CPU, RAM, storage, battery and active processes.",
-        "voice_ack": "Initiating complete diagnostic sweep of all Mark 85 subsystems, Sir."
+        "voice_ack": "Initiating complete diagnostic sweep of all Mark 86 subsystems, Sir."
     },
     "threat_scan": {
         "id": "threat_scan",
         "name": "Threat & Anomaly Scan",
         "code": "PROTOCOL-02-SENTRY",
         "icon": "🛡️",
+        "google_icon": "security",
         "description": "Inspect top resource consumers, thermal status and background anomalies.",
         "voice_ack": "Scanning background processes and system thresholds for anomalies."
     },
@@ -31,6 +33,7 @@ PROTOCOLS = {
         "name": "Deep Vision & Screenshot OCR",
         "code": "PROTOCOL-03-OPTICS",
         "icon": "👁️",
+        "google_icon": "document_scanner",
         "description": "Capture current desktop screenshot and execute deep GLM-OCR text extraction.",
         "voice_ack": "Capturing HUD optics and deploying GLM-OCR neural model."
     },
@@ -39,6 +42,7 @@ PROTOCOLS = {
         "name": "Code Matrix & Workspace",
         "code": "PROTOCOL-04-FORGE",
         "icon": "💻",
+        "google_icon": "terminal",
         "description": "Launch developer environment (VS Code & Terminal) and calibrate forge.",
         "voice_ack": "Calibrating the Stark developer forge and launching engineering tools."
     },
@@ -47,6 +51,7 @@ PROTOCOLS = {
         "name": "Clean Slate Protocol",
         "code": "PROTOCOL-05-PURGE",
         "icon": "🧹",
+        "google_icon": "cleaning_services",
         "description": "Purge temporary cache, screenshots, and reset active telemetry buffers.",
         "voice_ack": "Clean slate protocol engaged. Purging transient buffers."
     },
@@ -55,6 +60,7 @@ PROTOCOLS = {
         "name": "House Party Protocol",
         "code": "PROTOCOL-06-DEFENSE",
         "icon": "🚀",
+        "google_icon": "rocket_launch",
         "description": "Engage all subsystem reactors, maximum telemetry refresh, and core overcharge.",
         "voice_ack": "House Party Protocol engaged. All Mark 86 auxiliary systems online and ready for deployment."
     },
@@ -63,6 +69,7 @@ PROTOCOLS = {
         "name": "Guardian Protocol",
         "code": "PROTOCOL-07-SHIELD",
         "icon": "🛡️",
+        "google_icon": "shield",
         "description": "Restrict OS permissions, lock down terminal access, and monitor anomalous activity.",
         "voice_ack": "Guardian Protocol initialized. Security countermeasures are active."
     },
@@ -71,6 +78,7 @@ PROTOCOLS = {
         "name": "Scholar Protocol",
         "code": "PROTOCOL-08-RESEARCH",
         "icon": "🧠",
+        "google_icon": "psychology",
         "description": "Deep-web intelligence gathering and deep analysis matrix initialization.",
         "voice_ack": "Scholar Protocol active. Accessing global data nodes."
     },
@@ -79,6 +87,7 @@ PROTOCOLS = {
         "name": "Architect Protocol",
         "code": "PROTOCOL-09-BUILD",
         "icon": "🏗️",
+        "google_icon": "architecture",
         "description": "Initialize multi-file agentic loop for codebase modification.",
         "voice_ack": "Architect Protocol engaged. Standing by for structural directives."
     }
@@ -136,6 +145,9 @@ def execute_protocol(protocol_id: str) -> Dict[str, Any]:
             return {"success": False, "error": ss_res.get("error")}
 
         ocr_res = extract_ocr_text(ss_res.get("filepath"))
+        if not ocr_res.get("success"):
+            return {"success": False, "error": ocr_res.get("error", "OCR Extraction Failed")}
+
         return {
             "success": True,
             "protocol": protocol,
@@ -146,23 +158,37 @@ def execute_protocol(protocol_id: str) -> Dict[str, Any]:
         }
 
     elif protocol_id == "dev_matrix":
-        launch_application("code")
+        code_res = launch_application("code")
+        term_res = launch_application("terminal")
+        if not term_res.get("success"):
+            term_res = launch_application("powershell")
+        success = code_res.get("success", False) and term_res.get("success", False)
         return {
-            "success": True,
+            "success": success,
             "protocol": protocol,
             "timestamp": timestamp,
             "voice_ack": protocol["voice_ack"],
-            "summary": "Development environment online."
+            "summary": "Development environment online." if success else "Failed to launch complete development environment.",
+            "code_status": code_res,
+            "terminal_status": term_res
         }
 
     elif protocol_id == "clean_slate":
-        # Reset any temporary items
+        cleaned_count = 0
+        if SCREENSHOTS_DIR.exists():
+            for f in SCREENSHOTS_DIR.glob("*.png"):
+                try:
+                    f.unlink()
+                    cleaned_count += 1
+                except Exception:
+                    pass
         return {
             "success": True,
             "protocol": protocol,
             "timestamp": timestamp,
             "voice_ack": protocol["voice_ack"],
-            "summary": "Temporary buffers flushed. Arc Reactor operating at peak efficiency."
+            "cleaned_files": cleaned_count,
+            "summary": f"Clean slate completed: {cleaned_count} screenshot(s) purged. Temporary buffers flushed."
         }
 
     elif protocol_id == "house_party":

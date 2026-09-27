@@ -1,4 +1,6 @@
 import urllib.request
+import urllib.parse
+import ipaddress
 import json
 from pathlib import Path
 from duckduckgo_search import DDGS
@@ -19,7 +21,7 @@ def read_file(filepath: str) -> str:
     try:
         path = Path(filepath).resolve()
         workspace = Path(".").resolve()
-        if not str(path).startswith(str(workspace)):
+        if not path.is_relative_to(workspace):
             return "Error: Path traversal outside workspace restricted."
         with open(path, "r", encoding="utf-8") as f:
             return f.read()
@@ -30,7 +32,7 @@ def write_file(filepath: str, content: str) -> str:
     try:
         path = Path(filepath).resolve()
         workspace = Path(".").resolve()
-        if not str(path).startswith(str(workspace)):
+        if not path.is_relative_to(workspace):
             return "Error: Path traversal outside workspace restricted."
         with open(path, "w", encoding="utf-8") as f:
             f.write(content)
@@ -51,7 +53,25 @@ def get_weather(location: str) -> str:
         return f"Could not fetch weather: {str(e)}"
 
 def summarize_url(url: str) -> str:
+    if not isinstance(url, str) or not url.startswith(("http://", "https://")):
+        return "Could not fetch URL: Invalid protocol. Only http:// and https:// are allowed."
+
     try:
+        parsed = urllib.parse.urlparse(url)
+        hostname = (parsed.hostname or "").lower()
+        if not hostname:
+            return "Could not fetch URL: Invalid or missing hostname."
+
+        if hostname in ("localhost", "127.0.0.1", "::1") or hostname.endswith(".localhost") or hostname.endswith(".local"):
+            return "Could not fetch URL: Access to localhost and local network addresses is restricted."
+
+        try:
+            ip = ipaddress.ip_address(hostname)
+            if ip.is_private or ip.is_loopback or ip.is_reserved or ip.is_link_local or ip.is_unspecified:
+                return "Could not fetch URL: Access to private IP ranges is restricted."
+        except ValueError:
+            pass
+
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 JARVIS/Mark-86'})
         with urllib.request.urlopen(req, timeout=10) as response:
             html = response.read().decode('utf-8', errors='ignore')

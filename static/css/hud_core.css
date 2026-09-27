@@ -1,15 +1,13 @@
 /* ==========================================================================
-   J.A.R.V.I.S. MARK-85 HUD CORE DESIGN SYSTEM
+   J.A.R.V.I.S. MARK-86 HUD CORE DESIGN SYSTEM
    Stark Industries Holographic Cybernetic Interface
    ========================================================================== */
-
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@400;500;600;700&family=Vazirmatn:wght@300;400;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
     --bg-base: #03060f;
     --bg-darker: #020409;
-    --bg-panel: rgba(6, 14, 28, 0.75);
-    --bg-panel-hover: rgba(10, 22, 45, 0.85);
+    --bg-panel: rgba(6, 14, 28, 0.78);
+    --bg-panel-hover: rgba(10, 22, 45, 0.88);
     --bg-glass: rgba(0, 240, 255, 0.03);
 
     --stark-cyan: #00f0ff;
@@ -22,16 +20,16 @@
     --stark-red-glow: rgba(255, 42, 85, 0.5);
     --stark-green: #00ff88;
     --text-primary: #e6f8ff;
-    --text-secondary: #7f9cb8;
-    --text-dim: #3e5a75;
+    --text-secondary: #8da4bc;
+    --text-dim: #456280;
 
-    --border-glow: 1px solid rgba(0, 240, 255, 0.25);
+    --border-glow: 1px solid rgba(0, 240, 255, 0.22);
     --border-glow-active: 1px solid rgba(0, 240, 255, 0.7);
     --box-glow: 0 0 15px rgba(0, 240, 255, 0.15), inset 0 0 15px rgba(0, 240, 255, 0.05);
 
-    --font-sci-fi: 'Orbitron', -apple-system, sans-serif;
-    --font-telemetry: 'Rajdhani', monospace, sans-serif;
-    --font-body: 'Vazirmatn', 'Inter', -apple-system, sans-serif;
+    --font-sci-fi: 'Segoe UI Variable Display', 'Segoe UI', 'Rajdhani', sans-serif;
+    --font-telemetry: 'Cascadia Code', 'Consolas', monospace;
+    --font-body: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
 
 * {
@@ -179,8 +177,8 @@ body {
 .brand-title {
     font-family: var(--font-sci-fi);
     font-size: 1.25rem;
-    font-weight: 900;
-    letter-spacing: 3px;
+    font-weight: 800;
+    letter-spacing: 2px;
     color: #fff;
     text-shadow: 0 0 10px var(--stark-cyan);
 }
@@ -244,10 +242,12 @@ body {
     padding: 6px 12px;
     border-radius: 6px;
     cursor: pointer;
-    font-family: var(--font-telemetry);
-    font-size: 0.85rem;
-    display: flex;
+    font-family: var(--font-body);
+    font-weight: 500;
+    font-size: 0.82rem;
+    display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 6px;
     transition: all 0.2s ease;
 }
@@ -273,7 +273,7 @@ body {
     grid-template-columns: 280px 1fr 340px;
     gap: 12px;
     flex: 1;
-    min-height: 0; /* Important for scroll */
+    min-height: 0;
 }
 
 /* Common Card & Panel Base */
@@ -293,12 +293,13 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 14px;
+    padding: 9px 14px;
     background: rgba(0, 240, 255, 0.05);
     border-bottom: 1px solid rgba(0, 240, 255, 0.15);
     font-family: var(--font-sci-fi);
-    font-size: 0.85rem;
-    letter-spacing: 1.5px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.8px;
     color: var(--stark-cyan);
 }
 

@@ -20,11 +20,13 @@ class AvatarEngine {
         this.cyanAuraLight.position.set(0, -20, 80);
         this.scene.add(this.cyanAuraLight);
 
-        this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 3000);
+        const width = this.container.clientWidth || window.innerWidth;
+        const height = this.container.clientHeight || window.innerHeight;
+        this.camera = new THREE.PerspectiveCamera(45, (this.container.clientWidth || width) / (this.container.clientHeight || height), 1, 3000);
         this.camera.position.set(0, 0, 240);
 
         this.renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.setSize(this.container.clientWidth || width, this.container.clientHeight || height);
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         this.container.appendChild(this.renderer.domElement);
 
@@ -32,6 +34,8 @@ class AvatarEngine {
         this.particleSystem = null;
         this.isForming = false;
         this.isLoaded = false;
+        this.isVisible = false;
+        this.animFrameId = null;
         
         // Mouse tracking & Kinematic Parallax
         this.mouseX = 0;
@@ -113,7 +117,10 @@ class AvatarEngine {
             this.closeBtn.style.background = 'rgba(255, 42, 85, 0.15)';
             this.closeBtn.style.boxShadow = '0 0 15px rgba(255,42,85,0.2)';
         };
-        this.closeBtn.onclick = () => this.hideAvatar();
+        this.closeBtn.onclick = () => {
+            this.isVisible = false;
+            this.hideAvatar();
+        };
         this.container.appendChild(this.closeBtn);
     }
 
@@ -121,7 +128,7 @@ class AvatarEngine {
         // Load the genuine 3D human scan (Lee Perry-Smith) for facial and cranium precision
         if (typeof THREE.GLTFLoader !== 'undefined') {
             const loader = new THREE.GLTFLoader();
-            loader.load('models/LeePerrySmith.glb', (gltf) => {
+            loader.load('/static/models/LeePerrySmith.glb', (gltf) => {
                 let headGeometry = null;
                 gltf.scene.traverse((child) => {
                     if (child.isMesh && child.geometry) {
@@ -290,7 +297,7 @@ class AvatarEngine {
             }
         }
 
-        // 3. GLOWING INTERNAL VASCULAR & NEURAL BRANCHING TREE ("رگ‌های داخل بدن")
+        // 3. GLOWING INTERNAL VASCULAR & NEURAL BRANCHING TREE
         this.generateVascularNetwork(addParticle);
 
         // 4. LUMINOUS FACIAL ENERGY VORTEX (Center Core Glow)
@@ -520,14 +527,20 @@ class AvatarEngine {
 
     bindEvents() {
         window.addEventListener('resize', () => {
-            this.camera.aspect = window.innerWidth / window.innerHeight;
+            if (!this.camera || !this.renderer || !this.container) return;
+            const width = this.container.clientWidth || window.innerWidth;
+            const height = this.container.clientHeight || window.innerHeight;
+            this.camera.aspect = width / (height || 1);
             this.camera.updateProjectionMatrix();
-            this.renderer.setSize(window.innerWidth, window.innerHeight);
+            this.renderer.setSize(width, height);
         });
 
         document.addEventListener('mousemove', (e) => {
-            this.mouseX = (e.clientX / window.innerWidth) * 2 - 1;
-            this.mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
+            if (!this.renderer || !this.container) return;
+            const w = window.innerWidth || 1;
+            const h = window.innerHeight || 1;
+            this.mouseX = (e.clientX / w) * 2 - 1;
+            this.mouseY = -(e.clientY / h) * 2 + 1;
         });
 
         document.addEventListener('keydown', (e) => {
@@ -542,11 +555,20 @@ class AvatarEngine {
         this.container.style.opacity = '1';
         this.container.style.pointerEvents = 'auto';
         this.isForming = true;
+        this.isVisible = true;
 
         if (window.jarvisAudio) window.jarvisAudio.playBoot();
+        if (!this.animFrameId) {
+            this.animate();
+        }
     }
 
     hideAvatar() {
+        this.isVisible = false;
+        if (this.animFrameId) {
+            cancelAnimationFrame(this.animFrameId);
+            this.animFrameId = null;
+        }
         if (!this.isForming) return;
         this.container.style.opacity = '0';
         this.container.style.pointerEvents = 'none';
@@ -567,7 +589,11 @@ class AvatarEngine {
     }
 
     animate() {
-        requestAnimationFrame(() => this.animate());
+        if (!this.isVisible || (this.container && (this.container.style.display === 'none' || this.container.style.opacity === '0'))) {
+            this.animFrameId = null;
+            return;
+        }
+        this.animFrameId = requestAnimationFrame(() => this.animate());
 
         const time = performance.now() * 0.001;
 
@@ -673,7 +699,9 @@ class AvatarEngine {
             }
         }
 
-        this.renderer.render(this.scene, this.camera);
+        if (this.renderer && this.scene && this.camera) {
+            this.renderer.render(this.scene, this.camera);
+        }
     }
 }
 

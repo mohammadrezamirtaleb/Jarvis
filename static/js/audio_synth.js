@@ -13,6 +13,8 @@ class JarvisAudioEngine {
         this.onSpeakingStateChange = null;
         this.voices = [];
         this.hasGreeted = false;
+        this.hasSuccessfullySpokenGreeting = false;
+        this._isGreetingInProgress = false;
         
         // Backend TTS State
         this.audioQueue = [];
@@ -142,9 +144,9 @@ class JarvisAudioEngine {
         } catch (e) {}
     }
 
-    _getBestEnglishVoice() {
-        const voices = this.voices.length > 0 ? this.voices : (window.speechSynthesis ? window.speechSynthesis.getVoices() : []);
-        if (!voices || voices.length === 0) return null;
+    _getBestEnglishVoice(voices = null) {
+        const voiceList = (voices && voices.length > 0) ? voices : (this.voices.length > 0 ? this.voices : (window.speechSynthesis ? window.speechSynthesis.getVoices() : []));
+        if (!voiceList || voiceList.length === 0) return null;
 
         // Comprehensive list of female keywords to strictly exclude
         const femalePatterns = [
@@ -174,7 +176,7 @@ class JarvisAudioEngine {
             return malePatterns.some(p => low.includes(p)) && !isKnownFemale(name);
         };
 
-        const englishVoices = voices.filter(v => 
+        const englishVoices = voiceList.filter(v => 
             (v.lang.startsWith('en') || v.lang.includes('en-') || v.lang.includes('en_')) && !isKnownFemale(v.name)
         );
 
@@ -193,10 +195,10 @@ class JarvisAudioEngine {
         if (englishVoices.length > 0) return englishVoices[0];
 
         // 4. Any system voice that is verified not female
-        const nonFemale = voices.filter(v => !isKnownFemale(v.name));
+        const nonFemale = voiceList.filter(v => !isKnownFemale(v.name));
         if (nonFemale.length > 0) return nonFemale[0];
 
-        return voices[0] || null;
+        return voiceList[0] || null;
     }
 
     // Internal: Speak using Browser API
@@ -214,7 +216,11 @@ class JarvisAudioEngine {
         utterance.volume = 1.0;
 
         // Try to select an English Male voice if available
-        let voiceFound = this.voices.find(v => v.name.includes('David') || v.name.includes('Male') || v.name.includes('Guy') || v.name.includes('Mark'));
+        const voices = this.voices.length > 0 ? this.voices : (window.speechSynthesis ? window.speechSynthesis.getVoices() : []);
+        let voiceFound = this._getBestEnglishVoice ? this._getBestEnglishVoice(voices) : null;
+        if (!voiceFound && voices.length > 0) {
+            voiceFound = voices.find(v => v.name.includes('David') || v.name.includes('Male') || v.name.includes('Guy') || v.name.includes('Mark'));
+        }
         if (voiceFound) utterance.voice = voiceFound;
 
         utterance.onstart = () => {
@@ -320,13 +326,16 @@ class JarvisAudioEngine {
 
         this.currentAudioElement.play().catch(e => {
             console.error("Audio Playback Blocked:", e);
+            URL.revokeObjectURL(currentItem.url);
+            this.currentAudioElement = null;
             this.isPlayingQueue = false;
             this._playNextInQueue();
         });
     }
 
     speakGreeting(greetingText = "Good day, Sir. All Mark-85 systems are online and fully operational. Standing by for your directives.") {
-        if (this.hasSuccessfullySpokenGreeting) return;
+        if (this.hasSuccessfullySpokenGreeting || this._isGreetingInProgress) return;
+        this._isGreetingInProgress = true;
 
         const removeListeners = () => {
             window.removeEventListener('pointerdown', unlockAudio);
@@ -335,20 +344,21 @@ class JarvisAudioEngine {
         };
 
         const unlockAudio = () => {
-            this._initContext();
-            if (!this.hasSuccessfullySpokenGreeting) {
-                // Force browser TTS for zero-delay boot
-                this.speak(greetingText, () => {
-                    this.hasSuccessfullySpokenGreeting = true;
-                    removeListeners();
-                }, true);
-            }
             removeListeners();
+            if (this.hasSuccessfullySpokenGreeting) return;
+            this._initContext();
+            this._isGreetingInProgress = true;
+            // Force browser TTS for zero-delay boot
+            this.speak(greetingText, () => {
+                this.hasSuccessfullySpokenGreeting = true;
+                this._isGreetingInProgress = false;
+            }, true);
         };
 
         // Try speaking immediately on load
         this.speak(greetingText, () => {
             this.hasSuccessfullySpokenGreeting = true;
+            this._isGreetingInProgress = false;
             removeListeners();
         }, true);
 
@@ -376,6 +386,7 @@ class JarvisAudioEngine {
         this.audioQueue.forEach(item => URL.revokeObjectURL(item.url));
         this.audioQueue = [];
         this.isPlayingQueue = false;
+        this._isGreetingInProgress = false;
         
         this.isSpeaking = false;
         if (this.onSpeakingStateChange) this.onSpeakingStateChange(false);

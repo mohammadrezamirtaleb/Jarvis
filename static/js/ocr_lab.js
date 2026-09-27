@@ -27,13 +27,17 @@ class JarvisOCRLab {
         if (!this.dropzone) return;
 
         // Click to pick file
-        this.dropzone.addEventListener('click', () => this.fileInput.click());
-
-        this.fileInput.addEventListener('change', (e) => {
-            if (e.target.files && e.target.files[0]) {
-                this.loadImageFile(e.target.files[0]);
-            }
+        this.dropzone.addEventListener('click', () => {
+            if (this.fileInput) this.fileInput.click();
         });
+
+        if (this.fileInput) {
+            this.fileInput.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files[0]) {
+                    this.loadImageFile(e.target.files[0]);
+                }
+            });
+        }
 
         // Drag & Drop
         ['dragenter', 'dragover'].forEach(name => {
@@ -60,13 +64,15 @@ class JarvisOCRLab {
 
         // Global Paste (Ctrl+V) anywhere on page
         window.addEventListener('paste', (e) => {
-            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            const items = (e.clipboardData || (e.originalEvent && e.originalEvent.clipboardData) || {}).items || [];
             for (let item of items) {
                 if (item.kind === 'file' && item.type.startsWith('image/')) {
                     const blob = item.getAsFile();
-                    this.loadImageFile(blob);
-                    // Switch to OCR tab if not active
-                    if (window.switchHUDTab) window.switchHUDTab('tabOcr');
+                    if (blob) {
+                        this.loadImageFile(blob);
+                        // Switch to OCR tab if not active
+                        if (window.switchHUDTab) window.switchHUDTab('tabOcr');
+                    }
                     break;
                 }
             }
@@ -86,10 +92,15 @@ class JarvisOCRLab {
         if (this.copyBtn) {
             this.copyBtn.addEventListener('click', () => {
                 if (!this.extractedText) return;
-                navigator.clipboard.writeText(this.extractedText);
-                if (window.jarvisAudio) window.jarvisAudio.playClick();
-                this.copyBtn.innerText = '✓ COPIED';
-                setTimeout(() => { this.copyBtn.innerText = '📋 COPY'; }, 2000);
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(this.extractedText)
+                        .then(() => {
+                            if (window.jarvisAudio) window.jarvisAudio.playClick();
+                            this.copyBtn.innerHTML = `${getFluentSvg('check', { size: '13px' })} COPIED`;
+                            setTimeout(() => { this.copyBtn.innerHTML = `${getFluentSvg('content_copy', { size: '13px' })} COPY`; }, 2000);
+                        })
+                        .catch(err => console.warn(err));
+                }
             });
         }
 
@@ -99,7 +110,7 @@ class JarvisOCRLab {
                 if (!this.extractedText) return;
                 const promptInput = document.getElementById('chatPromptInput');
                 if (promptInput) {
-                    promptInput.value = `لطفاً متن استخراج‌شده زیر از تصویر/سند را بررسی، خلاصه‌سازی و تحلیل کن:\n\n\`\`\`\n${this.extractedText}\n\`\`\``;
+                    promptInput.value = `Please review, summarize, and analyze the following extracted text from the document:\n\n\`\`\`\n${this.extractedText}\n\`\`\``;
                     promptInput.focus();
                     if (window.switchHUDTab) window.switchHUDTab('tabTerminal'); // or center view
                     if (window.jarvisAudio) window.jarvisAudio.playClick();
@@ -112,11 +123,14 @@ class JarvisOCRLab {
         const reader = new FileReader();
         reader.onload = (e) => {
             this.currentImageBase64 = e.target.result;
-            this.previewImg.src = this.currentImageBase64;
-            this.previewImg.style.display = 'block';
-            this.dropzone.querySelector('.dropzone-text').style.display = 'none';
-            this.resultBox.innerText = '// Image loaded. Ready for GLM-OCR neural pass...';
-            this.scanBtn.disabled = false;
+            if (this.previewImg) {
+                this.previewImg.src = this.currentImageBase64;
+                this.previewImg.style.display = 'block';
+            }
+            const dropzoneText = this.dropzone ? this.dropzone.querySelector('.dropzone-text') : null;
+            if (dropzoneText) dropzoneText.style.display = 'none';
+            if (this.resultBox) this.resultBox.innerText = '// Image loaded. Ready for GLM-OCR neural pass...';
+            if (this.scanBtn) this.scanBtn.disabled = false;
             if (window.jarvisAudio) window.jarvisAudio.playClick();
         };
         reader.readAsDataURL(file);
@@ -124,34 +138,44 @@ class JarvisOCRLab {
 
     async captureScreenToLab() {
         if (window.jarvisAudio) window.jarvisAudio.playClick();
-        this.resultBox.innerText = '// Capturing high-resolution desktop HUD screenshot...';
+        if (this.resultBox) this.resultBox.innerText = '// Capturing high-resolution desktop HUD screenshot...';
 
         try {
             const res = await fetch('/api/screenshot', { method: 'POST' });
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}: ${res.statusText || 'Capture failed'}`);
+            }
             const data = await res.json();
             if (data.success && data.base64_data) {
                 this.currentImageBase64 = data.base64_data;
-                this.previewImg.src = data.base64_data;
-                this.previewImg.style.display = 'block';
-                this.dropzone.querySelector('.dropzone-text').style.display = 'none';
-                this.resultBox.innerText = `// Screenshot captured [${data.filename}]. Ready for OCR neural pass...`;
-                this.scanBtn.disabled = false;
+                if (this.previewImg) {
+                    this.previewImg.src = data.base64_data;
+                    this.previewImg.style.display = 'block';
+                }
+                const dropzoneText = this.dropzone ? this.dropzone.querySelector('.dropzone-text') : null;
+                if (dropzoneText) dropzoneText.style.display = 'none';
+                if (this.resultBox) this.resultBox.innerText = `// Screenshot captured [${data.filename}]. Ready for OCR neural pass...`;
+                if (this.scanBtn) this.scanBtn.disabled = false;
                 // Auto trigger scan
                 this.executeScan();
             } else {
-                this.resultBox.innerText = `// Capture error: ${data.error || 'Failed'}`;
+                if (this.resultBox) this.resultBox.innerText = `// Capture error: ${data.error || 'Failed'}`;
             }
         } catch (e) {
-            this.resultBox.innerText = `// Screenshot request failed: ${e.message}`;
+            if (this.resultBox) this.resultBox.innerText = `// Screenshot request failed: ${e.message}`;
         }
+    }
+
+    async scanImage() {
+        return this.executeScan();
     }
 
     async executeScan() {
         if (!this.currentImageBase64) return;
 
         const selectedModel = this.modelSelect ? this.modelSelect.value : 'glm-ocr:latest';
-        this.resultBox.innerText = `// Deploying ${selectedModel} neural vision weights...\n// Processing optical tensors in progress...`;
-        this.scanBtn.disabled = true;
+        if (this.resultBox) this.resultBox.innerText = `// Deploying ${selectedModel} neural vision weights...\n// Processing optical tensors in progress...`;
+        if (this.scanBtn) this.scanBtn.disabled = true;
 
         if (window.arcReactor) window.arcReactor.setState('THINKING');
         if (window.jarvisAudio) window.jarvisAudio.playAlert();
@@ -167,23 +191,27 @@ class JarvisOCRLab {
                 })
             });
 
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}: ${res.statusText || 'OCR request failed'}`);
+            }
+
             const data = await res.json();
             if (window.arcReactor) window.arcReactor.setState('IDLE');
-            this.scanBtn.disabled = false;
+            if (this.scanBtn) this.scanBtn.disabled = false;
 
             if (data.success && data.text) {
                 this.extractedText = data.text;
-                this.resultBox.innerText = data.text;
+                if (this.resultBox) this.resultBox.innerText = data.text;
                 if (this.sendToPromptBtn) this.sendToPromptBtn.style.display = 'inline-flex';
                 if (this.copyBtn) this.copyBtn.style.display = 'inline-flex';
                 if (window.jarvisAudio) window.jarvisAudio.playClick();
             } else {
-                this.resultBox.innerText = `// OCR Extraction Failed: ${data.error || 'No recognizable text detected'}`;
+                if (this.resultBox) this.resultBox.innerText = `// OCR Extraction Failed: ${data.error || 'No recognizable text detected'}`;
             }
         } catch (e) {
             if (window.arcReactor) window.arcReactor.setState('IDLE');
-            this.scanBtn.disabled = false;
-            this.resultBox.innerText = `// Neural connection error: ${e.message}`;
+            if (this.scanBtn) this.scanBtn.disabled = false;
+            if (this.resultBox) this.resultBox.innerText = `// Neural connection error: ${e.message}`;
         }
     }
 }

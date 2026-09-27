@@ -1,46 +1,111 @@
 """
-J.A.R.V.I.S. Neural Memory Vault
-Author: Stark Industries Mark-85 AI Core
+J.A.R.V.I.S. Neural Memory Vault (Mark-86 Unified Edition)
+Secure encrypted key storage and neural context engine for all 10 providers.
 """
 
+import copy
 import json
 import time
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 from core.security import encrypt_key, decrypt_key
 
-DATA_DIR = Path("data")
+DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 VAULT_FILE = DATA_DIR / "memory_vault.json"
+
+SENSITIVE_KEY_FIELDS = [
+    "openrouter_api_key",
+    "openai_api_key",
+    "anthropic_api_key",
+    "google_api_key",
+    "grok_api_key",
+    "zai_api_key",
+    "custom_api_key",
+    "vllm_api_key",
+    "huggingface_api_key"
+]
+
+DEFAULT_PROVIDER_CONFIG = {
+    "active_provider": "openrouter",
+    "max_tokens": 1500,
+    "temperature": 0.7,
+    "low_token_mode": True,
+
+    # OpenRouter
+    "openrouter_api_key": "",
+    "openrouter_model": "google/gemma-4-26b-a4b-it:free",
+
+    # OpenAI
+    "openai_api_key": "",
+    "openai_model": "gpt-4o-mini",
+    "openai_base_url": "https://api.openai.com/v1",
+
+    # Anthropic
+    "anthropic_api_key": "",
+    "anthropic_model": "claude-3-5-haiku-20241022",
+    "anthropic_base_url": "https://api.anthropic.com/v1",
+
+    # Google Gemini
+    "google_api_key": "",
+    "google_model": "gemini-2.5-flash",
+    "google_base_url": "https://generativelanguage.googleapis.com/v1beta",
+
+    # Grok (xAI)
+    "grok_api_key": "",
+    "grok_model": "grok-2-latest",
+    "grok_base_url": "https://api.x.ai/v1",
+
+    # ZAI (Zhipu / GLM)
+    "zai_api_key": "",
+    "zai_model": "glm-4-flash",
+    "zai_base_url": "https://open.bigmodel.cn/api/paas/v4",
+
+    # Custom Provider
+    "custom_api_key": "",
+    "custom_model": "custom-model",
+    "custom_base_url": "http://localhost:1234/v1",
+
+    # Ollama Local
+    "ollama_model": "qwen3.5:4b",
+    "ollama_base_url": "http://localhost:11434",
+
+    # vLLM
+    "vllm_api_key": "",
+    "vllm_model": "default",
+    "vllm_base_url": "http://localhost:8000/v1",
+
+    # Hugging Face
+    "huggingface_api_key": "",
+    "huggingface_model": "Qwen/Qwen2.5-72B-Instruct",
+    "huggingface_base_url": "https://router.huggingface.co/hf-inference/v1",
+}
 
 DEFAULT_VAULT = {
     "user_profile": {
         "callsign": "Sir",
         "title": "Chief Architect & Stark Commander",
         "primary_language": "Persian & English",
-        "system_version": "Mark LXXXV",
+        "system_version": "Mark LXXXVI (Native Windows 11)",
         "theme": "Stark Arc Blue & Gold"
     },
-    "provider_config": {
-        "active_provider": "openrouter",  # "ollama" or "openrouter"
-        "ollama_model": "qwen3.5:4b",
-        "openrouter_api_key": "",
-        "openrouter_model": "google/gemma-4-26b-a4b-it:free"
-    },
+    "provider_config": DEFAULT_PROVIDER_CONFIG,
     "notes": [
         {
             "id": 1,
-            "title": "Mark 85 Reactor Core Calibration",
-            "content": "Optimal plasma frequency maintained at 12.4 THz. Telemetry auto-refresh every 2.5s.",
+            "title": "Mark 86 Fluent Engine Online",
+            "content": "Windows 11 Native desktop HUD initialized. Universal 10-provider multi-link established.",
             "created_at": time.strftime("%Y-%m-%d %H:%M:%S")
         }
     ],
     "learned_facts": [
-        "J.A.R.V.I.S. operates on hybrid local neural models (Ollama qwen3.5:4b) & OpenRouter cloud models (Gemma-4-26B).",
-        "Protocols can be triggered via prompt directives or HUD matrix buttons."
+        "J.A.R.V.I.S. Mark 86 runs as a native Windows 11 Fluent application with Acrylic & Mica glass aesthetics.",
+        "Universal AI engine connects to OpenAI, Anthropic, Google Gemini, Grok, ZAI, OpenRouter, Custom APIs, Ollama, vLLM, and HuggingFace.",
+        "Real-time token budgeting and low-token sliding window context optimization are active."
     ],
     "protocols": []
 }
+
 
 class MemoryVault:
     def __init__(self):
@@ -49,34 +114,39 @@ class MemoryVault:
 
     def _load(self):
         if not self.file_path.exists():
-            self.data = DEFAULT_VAULT.copy()
+            self.data = copy.deepcopy(DEFAULT_VAULT)
             self._save()
         else:
             try:
                 with open(self.file_path, "r", encoding="utf-8") as f:
                     self.data = json.load(f)
-                    # Ensure provider_config exists in loaded data
-                    if "provider_config" not in self.data:
-                        self.data["provider_config"] = DEFAULT_VAULT["provider_config"].copy()
-                        self._save()
-                    elif "openrouter_api_key" in self.data["provider_config"]:
-                        # Decrypt it in memory
-                        enc_key = self.data["provider_config"]["openrouter_api_key"]
-                        if enc_key.startswith("encrypted:"):
-                            self.data["provider_config"]["openrouter_api_key"] = decrypt_key(enc_key)
-            except Exception:
-                self.data = DEFAULT_VAULT.copy()
-                self._save()
+                    
+                    # Merge default provider keys if missing
+                    prov_cfg = self.data.setdefault("provider_config", copy.deepcopy(DEFAULT_PROVIDER_CONFIG))
+                    for k, v in DEFAULT_PROVIDER_CONFIG.items():
+                        if k not in prov_cfg:
+                            prov_cfg[k] = v
+
+                    # Decrypt all sensitive API keys into memory
+                    for field in SENSITIVE_KEY_FIELDS:
+                        if field in prov_cfg:
+                            enc_val = prov_cfg[field]
+                            if enc_val and isinstance(enc_val, str) and enc_val.startswith("encrypted:"):
+                                prov_cfg[field] = decrypt_key(enc_val)
+            except Exception as e:
+                print(f"[VAULT] Warning: Could not load vault file: {e}. Using defaults.")
+                self.data = copy.deepcopy(DEFAULT_VAULT)
 
     def _save(self):
-        save_data = self.data.copy()
-        # Encrypt the key before saving
-        if "provider_config" in save_data and "openrouter_api_key" in save_data["provider_config"]:
-            plain_key = save_data["provider_config"]["openrouter_api_key"]
-            if plain_key and not plain_key.startswith("encrypted:"):
-                # We need a deep copy of provider_config so we don't encrypt the in-memory version
-                save_data["provider_config"] = save_data["provider_config"].copy()
-                save_data["provider_config"]["openrouter_api_key"] = encrypt_key(plain_key)
+        save_data = json.loads(json.dumps(self.data))
+        prov_cfg = save_data.get("provider_config", {})
+
+        # Encrypt all sensitive keys before writing to disk
+        for field in SENSITIVE_KEY_FIELDS:
+            if field in prov_cfg:
+                plain_val = prov_cfg[field]
+                if plain_val and isinstance(plain_val, str) and not plain_val.startswith("encrypted:"):
+                    prov_cfg[field] = encrypt_key(plain_val)
 
         with open(self.file_path, "w", encoding="utf-8") as f:
             json.dump(save_data, f, ensure_ascii=False, indent=2)
@@ -88,19 +158,19 @@ class MemoryVault:
         return self.data.get("user_profile", {})
 
     def update_user_profile(self, profile: Dict[str, Any]):
-        self.data["user_profile"].update(profile)
+        self.data.setdefault("user_profile", {}).update(profile)
         self._save()
 
     def get_provider_config(self) -> Dict[str, Any]:
-        return self.data.get("provider_config", DEFAULT_VAULT["provider_config"])
+        return self.data.get("provider_config", DEFAULT_PROVIDER_CONFIG)
 
     def update_provider_config(self, config: Dict[str, Any]):
-        prov_cfg = self.data.setdefault("provider_config", DEFAULT_VAULT["provider_config"].copy())
+        prov_cfg = self.data.setdefault("provider_config", copy.deepcopy(DEFAULT_PROVIDER_CONFIG))
         prov_cfg.update(config)
         self._save()
 
     def add_note(self, title: str, content: str) -> Dict[str, Any]:
-        notes = self.data.get("notes", [])
+        notes = self.data.setdefault("notes", [])
         new_id = max([n.get("id", 0) for n in notes], default=0) + 1
         note_entry = {
             "id": new_id,
@@ -109,7 +179,6 @@ class MemoryVault:
             "created_at": time.strftime("%Y-%m-%d %H:%M:%S")
         }
         notes.append(note_entry)
-        self.data["notes"] = notes
         self._save()
         return note_entry
 
@@ -127,22 +196,23 @@ class MemoryVault:
             self._save()
 
     def get_context_summary(self) -> str:
-        """Produce a compact context block to inject into LLM system prompt."""
+        """Produce a compact context block to inject into LLM system prompt with low token overhead."""
         profile = self.data.get("user_profile", {})
         facts = self.data.get("learned_facts", [])
         notes = self.data.get("notes", [])
         
         ctx = [
-            f"Commander Callsign: {profile.get('callsign', 'Sir')}",
-            f"Suit Model: {profile.get('system_version', 'Mark 85')}",
-            "Known Directives & Facts:"
+            f"Commander: {profile.get('callsign', 'Sir')} | Model: {profile.get('system_version', 'Mark 86')}",
         ]
-        for f in facts[-5:]:
-            ctx.append(f"- {f}")
+        if facts:
+            ctx.append("Directives:")
+            for f in facts[-3:]:
+                ctx.append(f"- {f}")
         if notes:
-            ctx.append("Active Memoranda / Notes:")
-            for n in notes[-3:]:
+            ctx.append("Active Notes:")
+            for n in notes[-2:]:
                 ctx.append(f"- [{n.get('title')}]: {n.get('content')}")
         return "\n".join(ctx)
+
 
 vault = MemoryVault()

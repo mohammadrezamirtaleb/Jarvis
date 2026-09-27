@@ -17,6 +17,10 @@ class ArcReactorHUD {
         this.particles = [];
         this.audioReactLevel = 0;
 
+        this.animFrameId = null;
+        this._overchargeTimer = null;
+        this._resizeHandler = null;
+
         this._setupCanvas();
         this._initParticles();
         this._bindEvents();
@@ -53,7 +57,8 @@ class ArcReactorHUD {
     }
 
     _bindEvents() {
-        window.addEventListener('resize', () => this._setupCanvas());
+        this._resizeHandler = () => this._setupCanvas();
+        window.addEventListener('resize', this._resizeHandler);
         this.canvas.addEventListener('click', () => {
             if (window.jarvisAudio) window.jarvisAudio.playClick();
             this.triggerOvercharge();
@@ -74,8 +79,10 @@ class ArcReactorHUD {
         const prevState = this.state;
         this.setState('OVERCHARGE');
         if (window.jarvisAudio) window.jarvisAudio.playBoot();
-        setTimeout(() => {
+        if (this._overchargeTimer) clearTimeout(this._overchargeTimer);
+        this._overchargeTimer = setTimeout(() => {
             this.setState(prevState === 'OVERCHARGE' ? 'IDLE' : prevState);
+            this._overchargeTimer = null;
         }, 3000);
     }
 
@@ -229,7 +236,26 @@ class ArcReactorHUD {
             this.ctx.fill();
         });
 
-        requestAnimationFrame(this.animate);
+        this.animFrameId = requestAnimationFrame(this.animate);
+    }
+
+    stop() {
+        if (this.animFrameId) {
+            cancelAnimationFrame(this.animFrameId);
+            this.animFrameId = null;
+        }
+    }
+
+    destroy() {
+        this.stop();
+        if (this._overchargeTimer) {
+            clearTimeout(this._overchargeTimer);
+            this._overchargeTimer = null;
+        }
+        if (this._resizeHandler) {
+            window.removeEventListener('resize', this._resizeHandler);
+            this._resizeHandler = null;
+        }
     }
 }
 

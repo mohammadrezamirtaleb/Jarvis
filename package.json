@@ -1,0 +1,27 @@
+{
+  "name": "jarvis-mark86-desktop",
+  "version": "86.0.0",
+  "description": "J.A.R.V.I.S. Mark 86 - Windows 11 Fluent Design Native Desktop AI Assistant",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "dist": "electron-builder"
+  },
+  "keywords": [
+    "jarvis",
+    "windows11",
+    "fluent-design",
+    "ai-assistant",
+    "openai",
+    "anthropic",
+    "gemini",
+    "grok",
+    "ollama"
+  ],
+  "author": "Stark Industries",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^33.2.1"
+  }
+}

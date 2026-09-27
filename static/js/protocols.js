@@ -35,6 +35,16 @@ class JarvisProtocols {
         });
     }
 
+    escapeHtml(str) {
+        if (str == null) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
     renderProtocolGrid() {
         const container = document.getElementById('protocolMatrixGrid');
         if (!container) return;
@@ -42,14 +52,14 @@ class JarvisProtocols {
         container.innerHTML = this.protocols.map(p => `
             <div class="hud-panel" style="padding: 10px; background: rgba(0,240,255,0.04); border-radius: 6px; border: 1px solid rgba(0,240,255,0.18);">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                    <span style="font-family:var(--font-sci-fi); font-size:0.85rem; color:var(--stark-cyan); font-weight:700;">
-                        ${p.icon || '⚡'} ${p.name}
+                    <span style="font-family:var(--font-sci-fi); font-size:0.85rem; color:var(--stark-cyan); font-weight:700; display:flex; align-items:center; gap:6px;">
+                        ${getFluentSvg(p.google_icon || 'bolt', { size: '16px', color: '#00f0ff' })} ${this.escapeHtml(p.name)}
                     </span>
-                    <span style="font-family:var(--font-telemetry); font-size:0.7rem; color:var(--stark-gold);">${p.code}</span>
+                    <span style="font-family:var(--font-telemetry); font-size:0.7rem; color:var(--stark-gold);">${this.escapeHtml(p.code)}</span>
                 </div>
-                <p style="font-size:0.78rem; color:var(--text-secondary); margin-bottom:8px; line-height:1.35;">${p.description}</p>
-                <button class="hud-btn-icon" style="width:100%; justify-content:center; padding:5px 0;" onclick="window.jarvisProtocols.runProtocol('${p.id}')">
-                    EXECUTE DIRECTIVE
+                <p style="font-size:0.78rem; color:var(--text-secondary); margin-bottom:8px; line-height:1.35;">${this.escapeHtml(p.description)}</p>
+                <button class="hud-btn-icon" style="width:100%; justify-content:center; padding:6px 0;" onclick="window.jarvisProtocols.runProtocol('${this.escapeHtml(p.id)}')">
+                    ${getFluentSvg('play_arrow', { size: '14px' })} EXECUTE DIRECTIVE
                 </button>
             </div>
         `).join('');
@@ -75,6 +85,10 @@ class JarvisProtocols {
                 body: JSON.stringify({ protocol_id: protoId })
             });
 
+            if (!res.ok) {
+                throw new Error(`Protocol execution request failed with status ${res.status}`);
+            }
+
             const data = await res.json();
 
             if (window.arcReactor) {
@@ -88,8 +102,10 @@ class JarvisProtocols {
 
                 // Add to Chat feed as system action report
                 if (window.addJarvisMessage) {
-                    let reportContent = `**[${data.protocol.name}]** - ${data.protocol.code}\n\n`;
-                    reportContent += `${data.voice_ack}\n\n`;
+                    const protoName = (data && data.protocol && data.protocol.name) ? data.protocol.name : protoId;
+                    const protoCode = (data && data.protocol && data.protocol.code) ? data.protocol.code : 'PROTOCOL';
+                    let reportContent = `**[${protoName}]** - ${protoCode}\n\n`;
+                    reportContent += `${data.voice_ack || ''}\n\n`;
                     if (data.summary) {
                         reportContent += `> ${data.summary}\n`;
                     }
@@ -118,4 +134,6 @@ class JarvisProtocols {
     }
 }
 
-window.jarvisProtocols = new JarvisProtocols();
+window.addEventListener('DOMContentLoaded', () => {
+    window.jarvisProtocols = new JarvisProtocols();
+});

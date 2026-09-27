@@ -6,6 +6,8 @@ class JarvisTelemetry {
     constructor() {
         this.pollInterval = 2500;
         this.timer = null;
+        this.retryCount = 0;
+        this.maxRetries = 10;
         this.init();
     }
 
@@ -13,9 +15,23 @@ class JarvisTelemetry {
         this.connectWebSocket();
     }
 
+    _escapeHtml(text) {
+        if (!text) return '';
+        return String(text)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
     connectWebSocket() {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         this.ws = new WebSocket(`${protocol}//${window.location.host}/ws/telemetry`);
+
+        this.ws.onopen = () => {
+            this.retryCount = 0;
+        };
 
         this.ws.onmessage = (event) => {
             try {
@@ -27,8 +43,14 @@ class JarvisTelemetry {
         };
 
         this.ws.onclose = () => {
-            console.log("Telemetry WS disconnected. Reconnecting in 3s...");
-            setTimeout(() => this.connectWebSocket(), 3000);
+            if (this.retryCount >= this.maxRetries) {
+                console.warn("Telemetry WS: Max retries (10) reached. Halting reconnect.");
+                return;
+            }
+            this.retryCount++;
+            const delay = Math.min(1000 * Math.pow(2, this.retryCount - 1), 30000);
+            console.log(`Telemetry WS disconnected. Reconnecting in ${delay}ms (attempt ${this.retryCount}/${this.maxRetries})...`);
+            setTimeout(() => this.connectWebSocket(), delay);
         };
 
         this.ws.onerror = (e) => {
@@ -101,7 +123,7 @@ class JarvisTelemetry {
         if (procListEl && data.top_processes) {
             procListEl.innerHTML = data.top_processes.map(p => `
                 <div class="spec-row" style="font-size:0.7rem; padding: 1px 0;">
-                    <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:110px;">${p.name}</span>
+                    <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:110px;">${this._escapeHtml(p.name)}</span>
                     <span class="spec-val">${p.cpu}% CPU / ${p.mem}% RAM</span>
                 </div>
             `).join('');

@@ -8,6 +8,7 @@ class JarvisApp {
         this.conversationHistory = [];
         this.activeConversationId = null;
         this.isStreaming = false;
+        this.agenticLoopDepth = 0;
         this.activeTab = 'tabOcr';
         this.activeProvider = 'openrouter';
         this.activeModel = 'google/gemma-4-26b-a4b-it:free';
@@ -65,7 +66,7 @@ class JarvisApp {
             const btn = document.createElement('div');
             btn.className = `action-badge ${c.id === this.activeConversationId ? 'active-convo' : ''}`;
             btn.style.cursor = 'pointer';
-            btn.innerHTML = `<span>💬 ${c.title}</span>`;
+            btn.innerHTML = `<span style="display:flex; align-items:center; gap:6px;">${getFluentSvg('chat', { size: '14px' })} ${c.title}</span>`;
             btn.onclick = () => this.loadConversation(c.id);
             listEl.appendChild(btn);
         });
@@ -150,9 +151,15 @@ class JarvisApp {
         });
     }
 
-    _initNotifications() {
+    _initNotifications(attempt = 0) {
+        if (attempt > 10) return; // Stop after 10 reconnect attempts
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        this.notifWs = new WebSocket(`${protocol}//${window.location.host}/ws/notifications`);
+        try {
+            this.notifWs = new WebSocket(`${protocol}//${window.location.host}/ws/notifications`);
+        } catch (e) { return; }
+        this.notifWs.onopen = () => {
+            attempt = 0;
+        };
         this.notifWs.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
@@ -162,7 +169,8 @@ class JarvisApp {
             } catch (e) {}
         };
         this.notifWs.onclose = () => {
-            setTimeout(() => this._initNotifications(), 5000); // Reconnect
+            const delay = Math.min(5000 * Math.pow(1.5, attempt), 30000);
+            setTimeout(() => this._initNotifications(attempt + 1), delay);
         };
     }
 
@@ -179,7 +187,7 @@ class JarvisApp {
         notif.style.fontFamily = 'var(--font-sci-fi)';
         notif.style.boxShadow = '0 0 15px rgba(0, 240, 255, 0.2)';
         notif.style.animation = 'fadeInMsg 0.3s ease-out';
-        notif.innerHTML = `<strong style="display:block; font-size:0.85rem;">⚠️ ${title}</strong><span style="font-size:0.75rem;">${message}</span>`;
+        notif.innerHTML = `<strong style="display:flex; align-items:center; gap:6px; font-size:0.85rem;">${getFluentSvg('warning', { size: '16px', color: 'var(--stark-gold)' })} ${title}</strong><span style="font-size:0.75rem;">${message}</span>`;
         
         container.appendChild(notif);
         
@@ -208,19 +216,7 @@ class JarvisApp {
             heroReactor.setState('OVERCHARGE');
         }
 
-        // Play SFX & Speak Greeting IMMEDIATELY (0 delay)
-        if (window.jarvisAudio) {
-            window.jarvisAudio.playBoot();
-            window.jarvisAudio.speakGreeting(
-                "Good day, Sir. All Mark-85 systems are online and fully operational. Standing by for your directives."
-            );
-            if (heroReactor) {
-                window.jarvisAudio.onSpeakingStateChange = (speaking) => {
-                    if (heroReactor) heroReactor.setState(speaking ? 'SPEAKING' : 'OVERCHARGE');
-                    if (window.arcReactor) window.arcReactor.setState(speaking ? 'SPEAKING' : 'IDLE');
-                };
-            }
-        }
+        // Audio deferred to AFTER boot overlay completes (see setTimeout below)
 
         // Animate progress bar over 3.0 seconds
         if (progressFill) {
@@ -238,6 +234,12 @@ class JarvisApp {
 
         // Transition from Fullscreen Orb to Main UI at 3.0 seconds
         setTimeout(() => {
+            if (heroReactor && heroReactor.destroy) {
+                heroReactor.destroy();
+            } else if (heroReactor && heroReactor.stop) {
+                heroReactor.stop();
+            }
+
             if (bootOverlay) {
                 bootOverlay.classList.add('boot-completed');
                 setTimeout(() => { bootOverlay.style.display = 'none'; }, 850);
@@ -253,12 +255,20 @@ class JarvisApp {
                 };
             }
 
-            this.logTerminal("J.A.R.V.I.S. Mark-85 Core Initialized.");
+            // NOW play boot SFX and speak greeting (main UI is visible)
+            if (window.jarvisAudio) {
+                window.jarvisAudio.playBoot();
+                window.jarvisAudio.speakGreeting(
+                    "Good day, Sir. All Mark-86 systems are online and fully operational. Standing by for your directives."
+                );
+            }
+
+            this.logTerminal("J.A.R.V.I.S. Mark-86 Core Initialized.");
             this.logTerminal(`Active Neural Link: ${this.activeProvider.toUpperCase()} [${this.activeModel}]`);
 
-            // Add Pure English Welcome Message in Chat (Voice already spoken by speakGreeting)
+            // Add Pure English Welcome Message in Chat
             const providerName = this.activeProvider === 'openrouter' ? 'OpenRouter Cloud (Gemma-4 26B)' : 'Ollama Local (Qwen 3.5 4B)';
-            const welcomeText = `Good day, Commander. All Mark-85 neural pathways are online and operating at peak nominal capacity.\n\nNeural link established with **${providerName}** and **GLM-OCR Vision Engine**. Standing by for your directives, Sir.`;
+            const welcomeText = `Good day, Commander. All Mark-86 neural pathways are online and operating at peak nominal capacity.\n\nNeural link established with **${providerName}** and **GLM-OCR Vision Engine**. Standing by for your directives, Sir.`;
             this.addJarvisMessage(welcomeText, [], false);
         }, 3000);
     }
@@ -327,7 +337,9 @@ class JarvisApp {
             this.sfxToggleBtn.addEventListener('click', () => {
                 window.jarvisAudio.sfxEnabled = !window.jarvisAudio.sfxEnabled;
                 this.sfxToggleBtn.classList.toggle('active', window.jarvisAudio.sfxEnabled);
-                this.sfxToggleBtn.innerText = window.jarvisAudio.sfxEnabled ? '🔊 SFX: ON' : '🔈 SFX: OFF';
+                this.sfxToggleBtn.innerHTML = window.jarvisAudio.sfxEnabled 
+                    ? `${getFluentSvg('volume_up', { size: '14px' })} SFX: ON` 
+                    : `${getFluentSvg('volume_off', { size: '14px' })} SFX: OFF`;
             });
         }
 
@@ -336,7 +348,9 @@ class JarvisApp {
             this.voiceToggleBtn.addEventListener('click', () => {
                 window.jarvisAudio.voiceEnabled = !window.jarvisAudio.voiceEnabled;
                 this.voiceToggleBtn.classList.toggle('active', window.jarvisAudio.voiceEnabled);
-                this.voiceToggleBtn.innerText = window.jarvisAudio.voiceEnabled ? '🎙️ VOICE: ON' : '🔇 VOICE: OFF';
+                this.voiceToggleBtn.innerHTML = window.jarvisAudio.voiceEnabled 
+                    ? `${getFluentSvg('mic', { size: '14px' })} VOICE: ON` 
+                    : `${getFluentSvg('mic_off', { size: '14px' })} VOICE: OFF`;
                 if (!window.jarvisAudio.voiceEnabled) window.jarvisAudio.stopSpeaking();
             });
         }
@@ -411,8 +425,8 @@ class JarvisApp {
                 modalOverlay.classList.add('active');
                 
                 // Sync UI with current settings
-                const ttsEngineSelect = document.getElementById('ttsEngineSelect');
-                const ttsVoiceSelect = document.getElementById('ttsVoiceSelect');
+                const ttsEngineSelect = document.getElementById('mainTtsEngineSelect') || document.getElementById('ttsEngineSelect');
+                const ttsVoiceSelect = document.getElementById('mainTtsVoiceSelect') || document.getElementById('ttsVoiceSelect');
                 if (ttsEngineSelect) ttsEngineSelect.value = this.ttsEngine;
                 if (ttsVoiceSelect) ttsVoiceSelect.value = this.ttsVoice;
 
@@ -434,16 +448,16 @@ class JarvisApp {
                 selectedModalProvider = 'openrouter';
                 provOpenRouterBtn.classList.add('active');
                 provOllamaBtn.classList.remove('active');
-                openrouterGroup.style.display = 'flex';
-                ollamaGroup.style.display = 'none';
+                if (openrouterGroup) openrouterGroup.style.display = 'flex';
+                if (ollamaGroup) ollamaGroup.style.display = 'none';
             });
 
             provOllamaBtn.addEventListener('click', () => {
                 selectedModalProvider = 'ollama';
                 provOllamaBtn.classList.add('active');
                 provOpenRouterBtn.classList.remove('active');
-                ollamaGroup.style.display = 'flex';
-                openrouterGroup.style.display = 'none';
+                if (ollamaGroup) ollamaGroup.style.display = 'flex';
+                if (openrouterGroup) openrouterGroup.style.display = 'none';
             });
         }
 
@@ -465,26 +479,29 @@ class JarvisApp {
         if (saveBtn) {
             saveBtn.addEventListener('click', async () => {
                 saveBtn.disabled = true;
-                statusMsg.innerText = 'Applying neural configuration...';
+                if (statusMsg) statusMsg.innerText = 'Applying neural configuration...';
 
                 let targetModel = '';
                 if (selectedModalProvider === 'openrouter') {
-                    targetModel = modelSelect.value === 'custom' ? customModelInput.value.trim() : modelSelect.value;
+                    if (modelSelect) {
+                        targetModel = (modelSelect.value === 'custom' && customModelInput) ? customModelInput.value.trim() : modelSelect.value;
+                    }
                 } else {
-                    targetModel = document.getElementById('ollamaModelInput').value.trim() || 'qwen3.5:4b';
+                    const ollamaInput = document.getElementById('ollamaModelInput');
+                    targetModel = (ollamaInput ? ollamaInput.value.trim() : '') || 'qwen3.5:4b';
                 }
 
                 const payload = {
                     active_provider: selectedModalProvider,
-                    openrouter_api_key: apiKeyInput.value.trim(),
+                    openrouter_api_key: apiKeyInput ? apiKeyInput.value.trim() : '',
                     openrouter_model: selectedModalProvider === 'openrouter' ? targetModel : undefined,
                     ollama_model: selectedModalProvider === 'ollama' ? targetModel : undefined
                 };
 
                 try {
                     // Save TTS settings locally
-                    const ttsEngineSelect = document.getElementById('ttsEngineSelect');
-                    const ttsVoiceSelect = document.getElementById('ttsVoiceSelect');
+                    const ttsEngineSelect = document.getElementById('mainTtsEngineSelect') || document.getElementById('ttsEngineSelect');
+                    const ttsVoiceSelect = document.getElementById('mainTtsVoiceSelect') || document.getElementById('ttsVoiceSelect');
                     if (ttsEngineSelect) {
                         this.ttsEngine = ttsEngineSelect.value;
                         localStorage.setItem('jarvis_tts_engine', this.ttsEngine);
@@ -504,19 +521,23 @@ class JarvisApp {
                         this.activeProvider = selectedModalProvider;
                         this.activeModel = targetModel;
                         this.updateProviderHUD();
-                        statusMsg.style.color = 'var(--stark-green)';
-                        statusMsg.innerText = '✓ Configuration Saved & Synced!';
+                        if (statusMsg) {
+                            statusMsg.style.color = 'var(--stark-green)';
+                            statusMsg.innerText = '✓ Configuration Saved & Synced!';
+                        }
                         if (window.jarvisAudio) window.jarvisAudio.playBoot();
                         setTimeout(() => {
-                            modalOverlay.classList.remove('active');
-                            statusMsg.innerText = '';
-                            saveBtn.disabled = false;
+                            if (modalOverlay) modalOverlay.classList.remove('active');
+                            if (statusMsg) statusMsg.innerText = '';
+                            if (saveBtn) saveBtn.disabled = false;
                         }, 1200);
                     }
                 } catch (e) {
-                    statusMsg.style.color = 'var(--stark-red)';
-                    statusMsg.innerText = `Error: ${e.message}`;
-                    saveBtn.disabled = false;
+                    if (statusMsg) {
+                        statusMsg.style.color = 'var(--stark-red)';
+                        statusMsg.innerText = `Error: ${e.message}`;
+                    }
+                    if (saveBtn) saveBtn.disabled = false;
                 }
             });
         }
@@ -656,6 +677,7 @@ class JarvisApp {
     async handleUserSubmit() {
         const text = this.promptInput.value.trim();
         if (!text || this.isStreaming) return;
+        this.agenticLoopDepth = 0;
 
         this.promptInput.value = '';
         if (window.jarvisAudio) window.jarvisAudio.playClick();
@@ -680,10 +702,21 @@ class JarvisApp {
             this.activeWs = new WebSocket(`${protocol}//${window.location.host}/ws/chat`);
 
             this.activeWs.onopen = () => {
+                let targetProv = this.activeProvider || 'openrouter';
+                let targetMdl = this.activeModel;
+
+                if (window.fluentHub) {
+                    targetProv = window.fluentHub.activeProvider || targetProv;
+                    const p = (window.fluentHub.providers || []).find(item => item.id === targetProv);
+                    if (p) {
+                        targetMdl = p.configured_model || p.default_model;
+                    }
+                }
+
                 this.activeWs.send(JSON.stringify({
                     messages: this.conversationHistory,
-                    provider: this.activeProvider,
-                    model: this.activeModel,
+                    provider: targetProv,
+                    model: targetMdl,
                     conversation_id: this.activeConversationId
                 }));
             };
@@ -696,8 +729,18 @@ class JarvisApp {
                         msgBody.innerHTML = this.renderMarkdown(fullText);
                         this.chatStream.scrollTop = this.chatStream.scrollHeight;
                     } else if (parsed.type === 'done') {
+                        this.isStreaming = false;
+                        const ws = this.activeWs;
+                        if (ws) {
+                            ws.onclose = null;
+                            ws.close();
+                            this.activeWs = null;
+                        }
+                        this.sendBtn.disabled = false;
+                        if (window.arcReactor && !window.jarvisAudio.isSpeaking) {
+                            window.arcReactor.setState('IDLE');
+                        }
                         this.handleGenerationDone(jarvisCard, parsed.full_text, parsed.actions);
-                        this.activeWs.close();
                     } else if (parsed.type === 'error') {
                         msgBody.innerHTML = `<span style="color:var(--stark-red)">${parsed.error}</span>`;
                         this.activeWs.close();
@@ -737,19 +780,23 @@ class JarvisApp {
     handleGenerationDone(cardEl, fullResponse, actions = [], speakVoice = true) {
         this.conversationHistory.push({ role: 'assistant', content: fullResponse });
 
-        // Add Copy Button
-        const copyBtn = document.createElement('button');
-        copyBtn.className = 'hud-btn-icon';
-        copyBtn.style.position = 'absolute';
-        copyBtn.style.top = '10px';
-        copyBtn.style.right = '10px';
-        copyBtn.innerText = '📋 COPY';
-        copyBtn.onclick = () => {
-            navigator.clipboard.writeText(fullResponse);
-            copyBtn.innerText = '✔️ COPIED';
-            setTimeout(() => copyBtn.innerText = '📋 COPY', 2000);
-        };
-        cardEl.appendChild(copyBtn);
+        // Add Copy Button inside .msg-meta-actions in sender row to avoid overlap
+        const metaActions = cardEl.querySelector('.msg-meta-actions');
+        if (metaActions) {
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'msg-copy-btn';
+            copyBtn.title = 'Copy message text';
+            copyBtn.innerHTML = `${getFluentSvg('content_copy', { size: '12px' })} <span>COPY</span>`;
+            copyBtn.onclick = () => {
+                navigator.clipboard.writeText(fullResponse)
+                    .then(() => {
+                        copyBtn.innerHTML = `${getFluentSvg('check', { size: '12px' })} <span>COPIED</span>`;
+                        setTimeout(() => copyBtn.innerHTML = `${getFluentSvg('content_copy', { size: '12px' })} <span>COPY</span>`, 2000);
+                    })
+                    .catch(err => console.warn(err));
+            };
+            metaActions.appendChild(copyBtn);
+        }
 
         // Clean action tags from displayed text if any remain
         const msgBody = cardEl.querySelector('.msg-body');
@@ -779,7 +826,7 @@ class JarvisApp {
             actions.forEach(act => {
                 const badge = document.createElement('div');
                 badge.className = 'action-badge';
-                let icon = '⚡';
+                let icon = 'bolt';
                 let label = act.action;
                 
                 // Add to feedback
@@ -787,10 +834,10 @@ class JarvisApp {
                 actionResultsStr += `Action: ${act.action} | Result: ${JSON.stringify(act.result || act.error || 'Done')}\n`;
 
                 if (act.action === 'open_app') {
-                    icon = '🚀';
+                    icon = 'rocket_launch';
                     label = `LAUNCHED: ${act.app}`;
                 } else if (act.action === 'screenshot') {
-                    icon = '📸';
+                    icon = 'photo_camera';
                     label = `SCREENSHOT CAPTURED`;
                     if (act.result?.base64_data && window.jarvisOCR) {
                         window.jarvisOCR.currentImageBase64 = act.result.base64_data;
@@ -806,7 +853,7 @@ class JarvisApp {
                         ssCard.className = 'chat-screenshot-card';
                         ssCard.innerHTML = `
                             <div class="report-header">
-                                <span>📸 DESKTOP OPTICAL CAPTURE</span>
+                                <span style="display:flex; align-items:center; gap:6px;">${getFluentSvg('photo_camera', { size: '15px', color: 'var(--stark-cyan)' })} DESKTOP OPTICAL CAPTURE</span>
                                 <span style="font-size:0.7rem; color:var(--text-secondary);">${new Date().toLocaleTimeString()}</span>
                             </div>
                             <img src="${act.result.base64_data}" class="chat-screenshot-img" title="Click to inspect" />
@@ -814,7 +861,7 @@ class JarvisApp {
                         badgeContainer.appendChild(ssCard);
                     }
                 } else if (act.action === 'system_vitals' || (act.action === 'protocol' && (act.id === 'diagnostics' || act.id === 'threat_scan'))) {
-                    icon = '📊';
+                    icon = 'monitoring';
                     label = act.action === 'system_vitals' ? 'VITALS CHECKED' : `PROTOCOL: ${act.id.toUpperCase()}`;
 
                     // Extract vitals data
@@ -832,7 +879,7 @@ class JarvisApp {
                         reportCard.className = 'holographic-report-card';
                         reportCard.innerHTML = `
                             <div class="report-header">
-                                <span>⚡ STARK MARK-85 TELEMETRY REPORT</span>
+                                <span style="display:flex; align-items:center; gap:6px;">${getFluentSvg('speed', { size: '15px', color: 'var(--stark-cyan)' })} STARK MARK-86 TELEMETRY REPORT</span>
                                 <span style="font-size:0.7rem; color:var(--stark-green); font-weight:700;">STATUS: NOMINAL</span>
                             </div>
                             <div class="report-metrics-grid">
@@ -860,22 +907,22 @@ class JarvisApp {
                             <div class="report-procs-section">
                                 <span>ACTIVE HIGH-DEMAND SUB-PROCESSES:</span>
                                 <div class="report-proc-chips">
-                                    ${procs.map(p => `<span class="report-proc-chip">${p.name} (${p.cpu}% CPU)</span>`).join('') || '<span class="report-proc-chip">None</span>'}
+                                    ${procs.map(p => `<span class="report-proc-chip">${this.escapeHtml(p.name)} (${p.cpu}% CPU)</span>`).join('') || '<span class="report-proc-chip">None</span>'}
                                 </div>
                             </div>
                         `;
                         badgeContainer.appendChild(reportCard);
                     }
                 } else if (act.action === 'protocol') {
-                    icon = '🛡️';
+                    icon = 'shield';
                     label = `PROTOCOL: ${act.id.toUpperCase()}`;
                 } else if (act.action === 'save_note') {
-                    icon = '💾';
+                    icon = 'lock';
                     label = `NOTE MEMORIZED`;
                     this.loadVaultNotes();
                 }
 
-                badge.innerHTML = `<span>${icon} ${label}</span>`;
+                badge.innerHTML = `<span style="display:flex; align-items:center; gap:5px;">${getFluentSvg(icon, { size: '14px' })} ${label}</span>`;
                 badgeRow.appendChild(badge);
             });
 
@@ -883,7 +930,8 @@ class JarvisApp {
             this.chatStream.scrollTop = this.chatStream.scrollHeight;
             
             // Trigger multi-step agentic loop if actions occurred and we aren't already looping too deep
-            if (shouldTriggerLoop) {
+            if (shouldTriggerLoop && this.agenticLoopDepth < 5) {
+                this.agenticLoopDepth++;
                 this.triggerAgenticLoop(actionResultsStr);
             }
         }
@@ -932,8 +980,18 @@ class JarvisApp {
                         msgBody.innerHTML = this.renderMarkdown(fullText);
                         this.chatStream.scrollTop = this.chatStream.scrollHeight;
                     } else if (parsed.type === 'done') {
+                        this.isStreaming = false;
+                        const ws = this.activeWs;
+                        if (ws) {
+                            ws.onclose = null;
+                            ws.close();
+                            this.activeWs = null;
+                        }
+                        this.sendBtn.disabled = false;
+                        if (window.arcReactor && !window.jarvisAudio.isSpeaking) {
+                            window.arcReactor.setState('IDLE');
+                        }
                         this.handleGenerationDone(jarvisCard, parsed.full_text, parsed.actions);
-                        this.activeWs.close();
                     } else if (parsed.type === 'error') {
                         msgBody.innerHTML = `<span style="color:var(--stark-red)">${parsed.error}</span>`;
                         this.activeWs.close();
@@ -964,14 +1022,16 @@ class JarvisApp {
         card.className = 'message-card user-message';
         const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         
-        const isRTL = /[\u0600-\u06FF]/.test(text);
+        const isRTL = false;
 
         card.innerHTML = `
             <div class="msg-sender-row">
                 <span style="color:var(--stark-gold); font-weight:700;">COMMANDER</span>
-                <span class="msg-time">${time}</span>
+                <div class="msg-meta-actions">
+                    <span class="msg-time">${time}</span>
+                </div>
             </div>
-            <div class="msg-body" ${isRTL ? 'dir="rtl"' : ''}>${this.escapeHtml(text)}</div>
+            <div class="msg-body">${this.escapeHtml(text)}</div>
         `;
         this.chatStream.appendChild(card);
         this.chatStream.scrollTop = this.chatStream.scrollHeight;
@@ -985,7 +1045,9 @@ class JarvisApp {
         card.innerHTML = `
             <div class="msg-sender-row">
                 <span style="font-weight:700;">J.A.R.V.I.S.</span>
-                <span class="msg-time">${time}</span>
+                <div class="msg-meta-actions">
+                    <span class="msg-time">${time}</span>
+                </div>
             </div>
             <div class="msg-body">
                 <span style="color:var(--stark-cyan); font-family:var(--font-telemetry);">Analyzing neural patterns...</span>
@@ -1003,14 +1065,17 @@ class JarvisApp {
 
     renderMarkdown(text) {
         if (!text) return '';
-        const isRTL = /[\u0600-\u06FF]/.test(text);
+        const isRTL = false;
         
         let html = text
             // Code blocks
             .replace(/```([a-zA-Z]*)\n([\s\S]*?)```/g, (match, lang, code) => {
                 const cleanCode = this.escapeHtml(code.trim());
+                const encodedCode = encodeURIComponent(code.trim()).replace(/'/g, '%27');
+                const copyIconSvg = getFluentSvg('content_copy', { size: '12px' });
+                const checkIconSvg = getFluentSvg('check', { size: '12px' });
                 return `
-                    <pre><button class="code-copy-btn" onclick="navigator.clipboard.writeText(decodeURIComponent('${encodeURIComponent(code.trim())}')); this.innerText='✓ COPIED'; setTimeout(()=>this.innerText='COPY', 2000);">COPY</button><code>${cleanCode}</code></pre>
+                    <pre><button class="code-copy-btn" onclick="navigator.clipboard.writeText(decodeURIComponent('${encodedCode}')).then(()=>{this.innerHTML='${checkIconSvg} COPIED'; setTimeout(()=>this.innerHTML='${copyIconSvg} COPY', 2000);}).catch(err => console.warn(err));">${copyIconSvg} COPY</button><code>${cleanCode}</code></pre>
                 `;
             })
             // Inline code
@@ -1024,7 +1089,7 @@ class JarvisApp {
             // Line breaks
             .replace(/\n/g, '<br/>');
 
-        return `<div ${isRTL ? 'dir="rtl"' : ''}>${html}</div>`;
+        return `<div>${html}</div>`;
     }
 
     escapeHtml(str) {

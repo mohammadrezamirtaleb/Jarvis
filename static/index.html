@@ -3,13 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>J.A.R.V.I.S. // Stark Industries Mark-85 Core</title>
+    <title>J.A.R.V.I.S. Mark-86 // Windows 11 Native Desktop Assistant</title>
+    <!-- Styles -->
     <link rel="stylesheet" href="css/hud_core.css">
     <link rel="stylesheet" href="css/reactor.css">
     <link rel="stylesheet" href="css/panels.css">
+    <link rel="stylesheet" href="css/fluent_desktop.css">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='none' stroke='%2300f0ff' stroke-width='8'/><circle cx='50' cy='50' r='20' fill='%2300f0ff'/></svg>">
+    <!-- Fluent Icons System -->
+    <script src="js/fluent_icons.js"></script>
+    <style>
+        .notification-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 99999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+            max-width: 350px;
+        }
+    </style>
 </head>
-<body>
+<body class="desktop-app-layout">
+    <div id="notificationContainer" class="notification-container"></div>
+
     <!-- Fullscreen Holographic Arc Reactor Boot Sequence -->
     <div id="starkBootOverlay" class="boot-overlay">
         <div class="boot-glow-aura"></div>
@@ -20,15 +39,24 @@
             <canvas id="heroReactorCanvas" width="320" height="320"></canvas>
         </div>
         <div class="boot-info-block">
-            <div class="boot-title-gold">J.A.R.V.I.S. // MARK LXXXV</div>
-            <div class="boot-subtitle-cyan" id="bootStatusText">CALIBRATING ARC REACTOR & QUANTUM NEURAL PATHWAYS...</div>
+            <div class="boot-title-gold">J.A.R.V.I.S. // MARK LXXXVI</div>
+            <div class="boot-subtitle-cyan" id="bootStatusText">CALIBRATING QUANTUM NEURAL NEXUS & WINDOWS 11 MICA SHIELD...</div>
             <div class="boot-progress-bar">
                 <div class="boot-progress-fill" id="bootProgressFill"></div>
             </div>
             <div class="boot-subsystems-row">
-                <span class="boot-sub-item">⚡ CORE: 100%</span>
-                <span class="boot-sub-item">🌐 NEURAL LINK: SYNCED</span>
-                <span class="boot-sub-item">🔬 VISION: ARMED</span>
+                <span class="boot-sub-item">
+                    <svg class="fluent-svg-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><circle cx="19" cy="6" r="2"></circle><circle cx="5" cy="6" r="2"></circle><circle cx="19" cy="18" r="2"></circle><circle cx="5" cy="18" r="2"></circle><line x1="12" y1="9" x2="17.5" y2="6.8"></line><line x1="12" y1="9" x2="6.5" y2="6.8"></line><line x1="12" y1="15" x2="17.5" y2="17.2"></line><line x1="12" y1="15" x2="6.5" y2="17.2"></line></svg>
+                    10 AI PROVIDERS: SYNCED
+                </span>
+                <span class="boot-sub-item">
+                    <svg class="fluent-svg-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                    WINDOWS 11 NATIVE: MICA
+                </span>
+                <span class="boot-sub-item">
+                    <svg class="fluent-svg-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14v-4"></path><path d="M3.34 19a10 10 0 1 1 17.32 0"></path></svg>
+                    TOKEN OPTIMIZER: ON
+                </span>
             </div>
         </div>
     </div>
@@ -37,391 +65,624 @@
     <div class="hud-background"></div>
     <div class="hud-scanlines"></div>
 
-    <!-- Master HUD Interface -->
-    <div id="hologramContainer" style="position:fixed; inset:0; z-index:9000; pointer-events:none;"></div>
-    
-    <div class="hud-container">
-        <!-- TOP STARK BANNER -->
-        <header class="hud-header">
-            <div class="brand-section">
-                <div class="brand-logo-glow">
-                    <div class="brand-logo-core"></div>
+    <!-- WINDOWS 11 CUSTOM FLUENT TITLEBAR -->
+    <header class="fluent-titlebar">
+        <div class="titlebar-drag-area">
+            <div class="titlebar-icon"></div>
+            <span>J.A.R.V.I.S. MARK-86</span>
+            <span class="titlebar-badge-suite">WIN11 FLUENT NATIVE</span>
+        </div>
+
+        <div class="titlebar-center">
+            <!-- Header Quick Provider Switcher -->
+            <select id="headerQuickProviderSelect" class="titlebar-pill-btn" style="background:#090d16; border-radius:15px; outline:none; cursor:pointer;">
+                <option value="openrouter">OpenRouter (Universal Cloud)</option>
+                <option value="openai">OpenAI (GPT-4o)</option>
+                <option value="anthropic">Anthropic (Claude 3.7)</option>
+                <option value="google">Google Gemini</option>
+                <option value="grok">Grok (xAI)</option>
+                <option value="zai">ZAI (GLM-4)</option>
+                <option value="ollama">Ollama (Local Offline)</option>
+                <option value="vllm">vLLM High Speed</option>
+                <option value="huggingface">Hugging Face Hub</option>
+                <option value="custom">Custom API Proxy</option>
+            </select>
+
+            <div class="token-budget-pill" id="tokenBudgetPill">
+                <svg class="fluent-svg-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00ffaa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14v-4"></path><path d="M3.34 19a10 10 0 1 1 17.32 0"></path></svg>
+                LOW-TOKEN: ON
+            </div>
+
+            <button id="avatarToggleBtn" class="titlebar-pill-btn" title="Toggle 3D Holographic Avatar">
+                <svg class="fluent-svg-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                AVATAR
+            </button>
+            <button id="voiceToggleBtn" class="titlebar-pill-btn" title="Toggle Spoken Voice Output">
+                <svg class="fluent-svg-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                VOICE: ON
+            </button>
+            <button id="sfxToggleBtn" class="titlebar-pill-btn" title="Toggle Sci-Fi SFX">
+                <svg class="fluent-svg-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                SFX: ON
+            </button>
+        </div>
+
+        <div class="titlebar-window-controls">
+            <button id="winPinBtn" class="win-ctrl-btn" title="Pin Always on Top">
+                <svg class="fluent-svg-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"></line><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.89A2 2 0 0 1 15 10.77V5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v5.77a2 2 0 0 1-1.11 1.79l-1.78.89A2 2 0 0 0 5 15.24Z"></path></svg>
+            </button>
+            <button id="winMinBtn" class="win-ctrl-btn" title="Minimize">─</button>
+            <button id="winMaxBtn" class="win-ctrl-btn" title="Maximize">□</button>
+            <button id="winCloseBtn" class="win-ctrl-btn close-btn" title="Close">✕</button>
+        </div>
+    </header>
+
+    <!-- MASTER WORKSPACE WITH LEFT NAVIGATION RAIL -->
+    <div class="desktop-main-body">
+        
+        <!-- WINDOWS 11 NAVIGATION RAIL -->
+        <nav class="fluent-nav-rail">
+            <button class="nav-rail-item active" data-view="chat" title="Command & Chat Matrix">
+                <svg class="fluent-svg-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                <span class="nav-label">CHAT</span>
+            </button>
+            <button class="nav-rail-item" data-view="providers" title="Universal AI Providers (10 Providers)">
+                <svg class="fluent-svg-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-2.04z"></path><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-2.04z"></path></svg>
+                <span class="nav-label">AI NEXUS</span>
+            </button>
+            <button class="nav-rail-item" data-view="protocols" title="Stark Protocols Suite">
+                <svg class="fluent-svg-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                <span class="nav-label">PROTOCOLS</span>
+            </button>
+            <button class="nav-rail-item" data-view="ocr" title="GLM-OCR & Optics Lab">
+                <svg class="fluent-svg-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h3"></path><path d="M20 7V4h-3"></path><path d="M4 17v3h3"></path><path d="M20 17v3h-3"></path><line x1="4" y1="12" x2="20" y2="12"></line><rect x="7" y="7" width="10" height="10" rx="1"></rect></svg>
+                <span class="nav-label">VISION</span>
+            </button>
+            <button class="nav-rail-item" data-view="vault" title="Neural Memory Vault">
+                <svg class="fluent-svg-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                <span class="nav-label">VAULT</span>
+            </button>
+            <button class="nav-rail-item" data-view="telemetry" title="Hardware Telemetry & Top Processes">
+                <svg class="fluent-svg-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="m19 9-5 5-4-4-3 3"></path></svg>
+                <span class="nav-label">VITALS</span>
+            </button>
+            
+            <div class="nav-rail-spacer"></div>
+
+            <button class="nav-rail-item" data-view="settings" title="Mark-86 Desktop Preferences">
+                <svg class="fluent-svg-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                <span class="nav-label">SETTINGS</span>
+            </button>
+        </nav>
+
+        <!-- MAIN VIEW CONTAINER (8 INTERCHANGEABLE FLUENT PAGES) -->
+        <div class="desktop-view-container">
+
+            <!-- ========================================================= -->
+            <!-- VIEW 1: COMMAND & CHAT MATRIX -->
+            <!-- ========================================================= -->
+            <div id="view-chat" class="desktop-view-page active" style="padding: 10px 14px;">
+                <main class="hud-workspace" style="flex:1; height: 100%; margin:0;">
+                    
+                    <!-- LEFT COLUMN: ARC REACTOR & TELEMETRY VITALS -->
+                    <aside class="hud-panel">
+                        <div class="panel-header">
+                            <span style="display:flex; align-items:center; gap:6px;">
+                                <svg class="fluent-svg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--stark-cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14v-4"></path><path d="M3.34 19a10 10 0 1 1 17.32 0"></path></svg>
+                                CORE TELEMETRY
+                            </span>
+                            <span style="font-size:0.7rem; color:var(--stark-gold);">MK-86</span>
+                        </div>
+                        <div class="panel-body">
+                            <!-- Central Holographic Arc Reactor Core -->
+                            <div class="arc-reactor-wrapper">
+                                <div class="reactor-canvas-container" id="reactorContainer">
+                                    <canvas id="arcReactorCanvas"></canvas>
+                                </div>
+                                <div class="reactor-telemetry">
+                                    <span class="reactor-status-text">ARC CORE: NOMINAL</span>
+                                    <span style="color:var(--stark-gold); font-weight:700;">14.8 THz</span>
+                                </div>
+                                <div class="reactor-power-meter">
+                                    <div class="reactor-power-fill"></div>
+                                </div>
+                                <div class="reactor-mode-pill" id="titlebarActiveProvPill">LINK: MULTI-AI SYNAPSE</div>
+                            </div>
+
+                            <!-- Hardware Telemetry Gauges -->
+                            <div class="telemetry-grid">
+                                <div class="gauge-card">
+                                    <div class="gauge-svg-container">
+                                        <svg class="gauge-svg" width="68" height="68">
+                                            <circle class="gauge-bg" cx="34" cy="34" r="30"></circle>
+                                            <circle class="gauge-progress" id="cpuProgress" cx="34" cy="34" r="30"></circle>
+                                        </svg>
+                                        <div class="gauge-value" id="cpuVal">0%</div>
+                                    </div>
+                                    <div class="gauge-label">CPU LOAD</div>
+                                </div>
+
+                                <div class="gauge-card">
+                                    <div class="gauge-svg-container">
+                                        <svg class="gauge-svg" width="68" height="68">
+                                            <circle class="gauge-bg" cx="34" cy="34" r="30"></circle>
+                                            <circle class="gauge-progress" id="ramProgress" cx="34" cy="34" r="30"></circle>
+                                        </svg>
+                                        <div class="gauge-value" id="ramVal">0%</div>
+                                    </div>
+                                    <div class="gauge-label">MEMORY</div>
+                                </div>
+
+                                <div class="gauge-card">
+                                    <div class="gauge-svg-container">
+                                        <svg class="gauge-svg" width="68" height="68">
+                                            <circle class="gauge-bg" cx="34" cy="34" r="30"></circle>
+                                            <circle class="gauge-progress" id="diskProgress" cx="34" cy="34" r="30"></circle>
+                                        </svg>
+                                        <div class="gauge-value" id="diskVal">0%</div>
+                                    </div>
+                                    <div class="gauge-label">STORAGE</div>
+                                </div>
+
+                                <div class="gauge-card">
+                                    <div class="gauge-svg-container">
+                                        <svg class="gauge-svg" width="68" height="68">
+                                            <circle class="gauge-bg" cx="34" cy="34" r="30"></circle>
+                                            <circle class="gauge-progress" id="batProgress" cx="34" cy="34" r="30"></circle>
+                                        </svg>
+                                        <div class="gauge-value" id="batVal">100%</div>
+                                    </div>
+                                    <div class="gauge-label">POWER</div>
+                                </div>
+                            </div>
+
+                            <!-- Quick Protocols Trigger List -->
+                            <div style="font-family:var(--font-sci-fi); font-size:0.75rem; color:var(--stark-cyan); letter-spacing:0.8px; margin-top:4px; font-weight:600;">
+                                DIRECT PROTOCOLS
+                            </div>
+                            <div class="quick-protocol-list">
+                                <button class="quick-proto-btn" data-proto="diagnostics">
+                                    <svg class="fluent-svg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--stark-cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><line x1="12" y1="8" x2="12" y2="14"></line><line x1="9" y1="11" x2="15" y2="11"></line></svg>
+                                    <span>Diagnostic Sweep</span>
+                                </button>
+                                <button class="quick-proto-btn" data-proto="threat_scan">
+                                    <svg class="fluent-svg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--stark-gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="M12 8v4"></path><path d="M12 16h.01"></path></svg>
+                                    <span>Threat & Anomaly Scan</span>
+                                </button>
+                                <button class="quick-proto-btn" data-proto="deep_ocr">
+                                    <svg class="fluent-svg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--stark-cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h3"></path><path d="M20 7V4h-3"></path><path d="M4 17v3h3"></path><path d="M20 17v3h-3"></path><line x1="4" y1="12" x2="20" y2="12"></line><rect x="7" y="7" width="10" height="10" rx="1"></rect></svg>
+                                    <span>Screenshot & OCR</span>
+                                </button>
+                                <button class="quick-proto-btn" data-proto="clean_slate">
+                                    <svg class="fluent-svg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00ff88" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"></path></svg>
+                                    <span>Clean Slate Protocol</span>
+                                </button>
+                            </div>
+                        </div>
+                    </aside>
+
+                    <!-- CENTER COLUMN: NEURAL CHAT STREAM -->
+                    <section class="hud-panel" style="grid-column: 2;">
+                        <div class="panel-header">
+                            <span style="display:flex; align-items:center; gap:6px;">
+                                <svg class="fluent-svg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--stark-cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a4 4 0 0 0-4 4c0 1.5.8 2.8 2 3.4V22h4V9.4a4 4 0 0 0 2-3.4 4 4 0 0 0-4-4z"></path><path d="M4.9 8a8 8 0 0 1 14.2 0"></path><path d="M2 13a12 12 0 0 1 20 0"></path></svg>
+                                NEURAL COMMUNICATION MATRIX
+                            </span>
+                            <span id="centerLinkStatus" style="font-size:0.7rem; color:var(--stark-cyan);">WIN11 DESKTOP LINK ACTIVE</span>
+                        </div>
+
+                        <!-- Chat Feed Stream -->
+                        <div class="chat-stream-container" id="chatStream"></div>
+
+                        <!-- Quick Prompt Chips -->
+                        <div class="quick-prompt-chips">
+                            <button class="chip-btn" data-prompt="Perform a complete diagnostic check of CPU, memory, storage, and subsystem health.">
+                                <svg class="fluent-svg-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                                System Vitals
+                            </button>
+                            <button class="chip-btn" data-prompt="Capture a desktop screenshot and analyze the currently open windows and tasks.">
+                                <svg class="fluent-svg-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                                Screen Analysis
+                            </button>
+                            <button class="chip-btn" data-prompt="Execute the Threat & Resource Anomaly Scan protocol.">
+                                <svg class="fluent-svg-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                                Threat Scan
+                            </button>
+                            <button class="chip-btn" data-prompt="How is the Mark-86 armor integrity and reactor plasma levels?">
+                                <svg class="fluent-svg-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><line x1="12" y1="8" x2="12" y2="14"></line><line x1="9" y1="11" x2="15" y2="11"></line></svg>
+                                Core Telemetry
+                            </button>
+                        </div>
+
+                        <!-- Prompt Console Input -->
+                        <div class="prompt-console-wrapper">
+                            <div class="prompt-input-row">
+                                <button id="quickScreenshotBtn" class="hud-btn-icon" style="padding:0 10px;" title="Capture Desktop Screenshot">
+                                    <svg class="fluent-svg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                                </button>
+                                <input type="text" id="chatPromptInput" class="hud-input" placeholder="Enter command, prompt, or directive for J.A.R.V.I.S..." autocomplete="off">
+                                <button id="chatSendBtn" class="hud-send-btn">
+                                    <span>TRANSMIT</span>
+                                    <svg class="fluent-svg-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- RIGHT COLUMN: MULTI-TAB WORKSPACE -->
+                    <aside class="hud-panel">
+                        <nav class="right-tab-bar">
+                            <button class="tab-btn active" data-tab="tabOcr">
+                                <svg class="fluent-svg-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h3"></path><path d="M20 7V4h-3"></path><path d="M4 17v3h3"></path><path d="M20 17v3h-3"></path><line x1="4" y1="12" x2="20" y2="12"></line><rect x="7" y="7" width="10" height="10" rx="1"></rect></svg>
+                                OCR
+                            </button>
+                            <button class="tab-btn" data-tab="tabProtocols">
+                                <svg class="fluent-svg-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                                PROTOCOLS
+                            </button>
+                            <button class="tab-btn" data-tab="tabTerminal">
+                                <svg class="fluent-svg-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+                                TERMINAL
+                            </button>
+                            <button class="tab-btn" data-tab="tabVault">
+                                <svg class="fluent-svg-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                                VAULT
+                            </button>
+                            <button class="tab-btn" data-tab="tabChats">
+                                <svg class="fluent-svg-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                                SESSIONS
+                            </button>
+                        </nav>
+
+                        <!-- TAB 1: OCR LAB -->
+                        <div id="tabOcr" class="tab-content active">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <span style="font-family:var(--font-sci-fi); font-size:0.78rem; color:var(--stark-cyan); font-weight:600;">GLM-OCR OPTICS</span>
+                                <div style="display:flex; gap:6px; align-items:center;">
+                                    <select id="ocrModelSelect" class="titlebar-pill-btn" style="background:#090d16; border:1px solid rgba(0,240,255,0.3); color:var(--stark-cyan); font-size:0.7rem; padding:2px 6px; border-radius:4px; outline:none;">
+                                        <option value="glm-ocr:latest" selected>GLM-OCR</option>
+                                    </select>
+                                    <button id="ocrScreenCaptureBtn" class="hud-btn-icon" style="font-size:0.75rem; padding:3px 8px;">
+                                        <svg class="fluent-svg-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                                        CAPTURE
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="ocr-dropzone" id="ocrDropzone">
+                                <input type="file" id="ocrFileInput" accept="image/*" style="display:none;">
+                                <img id="ocrPreview" class="ocr-preview-img" style="display:none;" alt="Preview">
+                                <div class="dropzone-text">
+                                    <div style="margin-bottom:6px;">
+                                        <svg class="fluent-svg-icon" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--stark-cyan)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 16 12 12 8 16"></polyline><line x1="12" y1="12" x2="12" y2="21"></line><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"></path><polyline points="16 16 12 12 8 16"></polyline></svg>
+                                    </div>
+                                    <div style="font-size:0.82rem; color:#fff; font-weight:600;">DRAG & DROP IMAGE HERE</div>
+                                    <div style="font-size:0.72rem; color:var(--text-secondary); margin-top:2px;">Paste screenshot (Ctrl+V)</div>
+                                </div>
+                            </div>
+                            <div style="display:flex; gap:6px;">
+                                <button id="ocrScanBtn" class="hud-btn-icon" style="flex:1; justify-content:center; padding:6px 0;" disabled>
+                                    <svg class="fluent-svg-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg>
+                                    EXTRACT OCR
+                                </button>
+                                <button id="ocrSendPromptBtn" class="hud-btn-icon" style="display:none; padding:6px 10px;">
+                                    <svg class="fluent-svg-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+                                    ASK JARVIS
+                                </button>
+                                <button id="ocrCopyBtn" class="hud-btn-icon" style="display:none; padding:6px 8px;">
+                                    <svg class="fluent-svg-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                    COPY
+                                </button>
+                            </div>
+                            <div class="ocr-result-box" id="ocrResultBox">// Optics ready. Drop any document/code image...</div>
+                        </div>
+
+                        <!-- TAB 2: PROTOCOLS -->
+                        <div id="tabProtocols" class="tab-content">
+                            <div id="protocolMatrixGrid" style="display:flex; flex-direction:column; gap:8px;"></div>
+                        </div>
+
+                        <!-- TAB 3: TERMINAL -->
+                        <div id="tabTerminal" class="tab-content">
+                            <div class="terminal-output" id="terminalOutput"></div>
+                            <div class="terminal-input-row">
+                                <span class="terminal-prompt-symbol">JARVIS&gt;</span>
+                                <input type="text" id="terminalInput" class="hud-input" placeholder="Safe command (dir, ping, ipconfig)...">
+                            </div>
+                        </div>
+
+                        <!-- TAB 4: VAULT -->
+                        <div id="tabVault" class="tab-content">
+                            <input type="text" id="noteTitleInput" class="hud-input" placeholder="Memorandum Title" style="margin-bottom:6px;">
+                            <textarea id="noteContentInput" class="hud-input" placeholder="Memorandum Content..." style="height:55px; margin-bottom:6px; resize:none;"></textarea>
+                            <button id="saveNoteBtn" class="hud-btn-icon" style="width:100%; justify-content:center; margin-bottom:8px;">
+                                <svg class="fluent-svg-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                                STORE MEMORANDUM
+                            </button>
+                            <div id="vaultNotesList" style="display:flex; flex-direction:column; gap:6px; flex:1; overflow-y:auto;"></div>
+                        </div>
+
+                        <!-- TAB 5: SESSIONS -->
+                        <div id="tabChats" class="tab-content" style="display:none;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
+                                <span style="font-family:var(--font-sci-fi); font-size:0.78rem; color:var(--stark-cyan); font-weight:600;">SESSION LOGS</span>
+                                <button id="newChatBtn" class="hud-btn-icon" style="font-size:0.75rem; padding:3px 8px;">
+                                    <svg class="fluent-svg-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                    NEW
+                                </button>
+                            </div>
+                            <div id="chatHistoryList" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
+                        </div>
+                    </aside>
+                </main>
+            </div>
+
+            <!-- ========================================================= -->
+            <!-- VIEW 2: UNIVERSAL AI PROVIDER NEXUS (10 PROVIDERS) -->
+            <!-- ========================================================= -->
+            <div id="view-providers" class="desktop-view-page">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <h2 style="font-family:var(--fluent-font-title); font-size:1.35rem; color:#ffffff; margin-bottom:2px; display:flex; align-items:center;">
+                            <svg class="fluent-svg-icon view-header-icon" viewBox="0 0 24 24" fill="none" stroke="var(--stark-cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-2.04z"></path><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-2.04z"></path></svg>
+                            Universal AI Provider Nexus
+                        </h2>
+                        <div style="font-size:0.82rem; color:#8fa8c2;">
+                            Seamless multi-link connecting 10 international AI providers with dynamic token budgeting.
+                        </div>
+                    </div>
                 </div>
-                <div>
-                    <h1 class="brand-title">J.A.R.V.I.S.</h1>
-                    <div class="brand-subtitle">STARK INDUSTRIES // MARK LXXXV OS</div>
+
+                <!-- Low Token Budget Control Banner -->
+                <div class="token-optimizer-banner" style="margin-top:14px;">
+                    <div>
+                        <div style="font-weight:600; font-size:0.92rem; color:#00ffaa; font-family:var(--fluent-font-title); display:flex; align-items:center; gap:6px;">
+                            <svg class="fluent-svg-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00ffaa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14v-4"></path><path d="M3.34 19a10 10 0 1 1 17.32 0"></path></svg>
+                            Neural Token Optimizer (Low-Token Limit Mode)
+                        </div>
+                        <div style="font-size:0.76rem; color:#9ab5ce; margin-top:2px;">
+                            Automatically condenses context, trims middle history, and enforces tight token caps for maximum efficiency and speed.
+                        </div>
+                    </div>
+                    <label class="switch-control">
+                        <input type="checkbox" id="lowTokenSwitch" checked>
+                        <span class="slider-round"></span>
+                    </label>
+                </div>
+
+                <!-- Provider Cards Grid (All 10 Providers) -->
+                <div class="providers-grid" id="providersGridContainer">
+                    <!-- Populated dynamically by fluent_providers.js -->
                 </div>
             </div>
 
-            <div class="status-badges">
-                <!-- Neural Model Selector Dropdown -->
-                <div class="badge" style="padding: 2px 6px;">
-                    <span class="badge-dot" id="providerDot"></span>
-                    <span style="font-size:0.75rem; margin-right:4px;">BRAIN:</span>
-                    <select id="headerModelSelect" class="model-dropdown-select">
-                        <option value="openrouter|google/gemma-4-26b-a4b-it:free" selected>🌐 OpenRouter: Gemma-4 26B (Free)</option>
-                        <option value="openrouter|poolside/laguna-s-2.1:free">🌐 OpenRouter: Laguna 2.1 (Free)</option>
-                        <option value="openrouter|cohere/north-mini-code:free">🌐 OpenRouter: Cohere North Mini (Free)</option>
-                        <option value="ollama|qwen3.5:4b">⚡ Ollama: Qwen3.5 4B (Local)</option>
-                    </select>
+            <!-- ========================================================= -->
+            <!-- VIEW 3: PROTOCOLS FULL MATRIX -->
+            <!-- ========================================================= -->
+            <div id="view-protocols" class="desktop-view-page">
+                <h2 style="font-family:var(--fluent-font-title); font-size:1.35rem; color:#ffffff; margin-bottom:4px; display:flex; align-items:center;">
+                    <svg class="fluent-svg-icon view-header-icon" viewBox="0 0 24 24" fill="none" stroke="var(--stark-cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                    Stark Protocols & Autonomous Directives
+                </h2>
+                <div style="font-size:0.82rem; color:#8fa8c2; margin-bottom:16px;">
+                    Execute hardware sweeps, threat scans, opto-electronic vision, and automated OS protocols.
                 </div>
+                <div id="fullProtocolGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:14px;"></div>
+            </div>
 
-                <div class="badge badge-gold">
-                    <span class="badge-dot"></span>
-                    <span>VISION: <strong style="color:var(--stark-gold);">GLM-OCR</strong></span>
+            <!-- ========================================================= -->
+            <!-- VIEW 4: VISION & OCR LAB -->
+            <!-- ========================================================= -->
+            <div id="view-ocr" class="desktop-view-page">
+                <h2 style="font-family:var(--fluent-font-title); font-size:1.35rem; color:#ffffff; margin-bottom:4px; display:flex; align-items:center;">
+                    <svg class="fluent-svg-icon view-header-icon" viewBox="0 0 24 24" fill="none" stroke="var(--stark-cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h3"></path><path d="M20 7V4h-3"></path><path d="M4 17v3h3"></path><path d="M20 17v3h-3"></path><line x1="4" y1="12" x2="20" y2="12"></line><rect x="7" y="7" width="10" height="10" rx="1"></rect></svg>
+                    Optics & Multimodal Vision Lab
+                </h2>
+                <div style="font-size:0.82rem; color:#8fa8c2; margin-bottom:16px;">
+                    High-accuracy GLM-OCR, Qwen Vision, and desktop screen extraction.
                 </div>
-                <div class="badge">
-                    <span style="color:var(--stark-cyan);">SEC: ENCRYPTED</span>
+                <div style="display:flex; gap:16px; flex:1; overflow:hidden;">
+                    <div style="flex:1; display:flex; flex-direction:column; gap:10px;">
+                        <div class="ocr-dropzone" id="ocrMainDropzone" style="height:280px;">
+                            <div class="dropzone-text">
+                                <div style="margin-bottom:8px;">
+                                    <svg class="fluent-svg-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--stark-cyan)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 16 12 12 8 16"></polyline><line x1="12" y1="12" x2="12" y2="21"></line><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"></path><polyline points="16 16 12 12 8 16"></polyline></svg>
+                                </div>
+                                <div style="font-size:1rem; color:#fff; font-weight:600;">DRAG & DROP IMAGE HERE</div>
+                                <div style="font-size:0.8rem; color:var(--text-secondary); margin-top:2px;">Or paste directly with Ctrl+V</div>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:10px;">
+                            <button id="mainOcrCaptureBtn" class="fluent-btn btn-primary" style="flex:1; padding:10px;">
+                                <svg class="fluent-svg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                                CAPTURE SCREENSHOT
+                            </button>
+                            <button id="mainOcrExtractBtn" class="fluent-btn" style="flex:1; padding:10px;">
+                                <svg class="fluent-svg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg>
+                                EXTRACT MARKDOWN
+                            </button>
+                        </div>
+                    </div>
+                    <div style="flex:1; display:flex; flex-direction:column;">
+                        <div style="font-size:0.85rem; color:#00d2ff; font-weight:600; margin-bottom:6px;">EXTRACTED TEXT & DATA:</div>
+                        <div class="ocr-result-box" id="mainOcrResultBox" style="flex:1; height:auto;">// Ready for optical tensor extraction...</div>
+                    </div>
                 </div>
             </div>
 
-            <div class="header-controls">
-                <button id="fullscreenToggleBtn" class="hud-btn-icon" title="Toggle Fullscreen Mode (F11)">
-                    ⛶ FULLSCREEN
-                </button>
-                <button id="configModalOpenBtn" class="hud-btn-icon" title="Configure AI Providers & API Keys">
-                    ⚙️ CONFIG
-                </button>
-                <button id="voiceToggleBtn" class="hud-btn-icon active" title="Toggle Spoken Voice Output">
-                    🎙️ VOICE: ON
-                </button>
-                <button id="sfxToggleBtn" class="hud-btn-icon active" title="Toggle Sci-Fi Sound Effects">
-                    🔊 SFX: ON
-                </button>
+            <!-- ========================================================= -->
+            <!-- VIEW 5: NEURAL MEMORY VAULT -->
+            <!-- ========================================================= -->
+            <div id="view-vault" class="desktop-view-page">
+                <h2 style="font-family:var(--fluent-font-title); font-size:1.35rem; color:#ffffff; margin-bottom:4px; display:flex; align-items:center;">
+                    <svg class="fluent-svg-icon view-header-icon" viewBox="0 0 24 24" fill="none" stroke="var(--stark-cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                    Neural Memory Vault
+                </h2>
+                <div style="font-size:0.82rem; color:#8fa8c2; margin-bottom:16px;">
+                    Persistent encrypted memoranda, commander preferences, and learned directives.
+                </div>
+                <div style="display:flex; gap:16px; flex:1; overflow:hidden;">
+                    <div style="flex:1; display:flex; flex-direction:column; gap:10px; background:var(--fluent-card-bg); padding:16px; border-radius:var(--fluent-radius-md); border:var(--fluent-border);">
+                        <span style="font-weight:600; color:#00d2ff; font-size:0.9rem;">ADD NEW MEMORANDUM</span>
+                        <input type="text" id="vaultMainTitle" class="fluent-input" placeholder="Title...">
+                        <textarea id="vaultMainContent" class="fluent-input" placeholder="Content..." style="height:120px; resize:none;"></textarea>
+                        <button id="vaultMainSaveBtn" class="fluent-btn btn-primary">
+                            <svg class="fluent-svg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                            STORE IN NEURAL MEMORY
+                        </button>
+                    </div>
+                    <div style="flex:1.5; display:flex; flex-direction:column; gap:8px; overflow-y:auto;" id="vaultMainList"></div>
+                </div>
             </div>
-        </header>
 
-        <!-- MAIN 3-COLUMN WORKSPACE -->
-        <main class="hud-workspace">
-            <!-- LEFT COLUMN: ARC REACTOR & TELEMETRY VITALS -->
-            <aside class="hud-panel">
-                <div class="panel-header">
-                    <span>⚡ CORE TELEMETRY</span>
-                    <span style="font-size:0.7rem; color:var(--stark-gold);">MK-85</span>
+            <!-- ========================================================= -->
+            <!-- VIEW 6: HARDWARE TELEMETRY & TOP PROCESSES -->
+            <!-- ========================================================= -->
+            <div id="view-telemetry" class="desktop-view-page">
+                <h2 style="font-family:var(--fluent-font-title); font-size:1.35rem; color:#ffffff; margin-bottom:4px; display:flex; align-items:center;">
+                    <svg class="fluent-svg-icon view-header-icon" viewBox="0 0 24 24" fill="none" stroke="var(--stark-cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="m19 9-5 5-4-4-3 3"></path></svg>
+                    Hardware Telemetry & Subsystems
+                </h2>
+                <div style="font-size:0.82rem; color:#8fa8c2; margin-bottom:16px;">
+                    Live real-time monitoring of CPU, RAM, GPU, storage, and active Windows processes.
                 </div>
-                <div class="panel-body">
-                    <!-- Central Holographic Arc Reactor Core -->
-                    <div class="arc-reactor-wrapper">
-                        <div class="reactor-canvas-container" id="reactorContainer">
-                            <canvas id="arcReactorCanvas"></canvas>
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px; margin-bottom:16px;">
+                    <div class="provider-card">
+                        <div style="color:#00d2ff; font-weight:600; display:flex; align-items:center; gap:6px;">
+                            <svg class="fluent-svg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00d2ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="15" x2="23" y2="15"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="15" x2="4" y2="15"></line></svg>
+                            CPU UTILIZATION
                         </div>
-                        <div class="reactor-telemetry">
-                            <span class="reactor-status-text">ARC CORE: NOMINAL</span>
-                            <span style="color:var(--stark-gold); font-weight:700;">12.4 THz</span>
-                        </div>
-                        <div class="reactor-power-meter">
-                            <div class="reactor-power-fill"></div>
-                        </div>
-                        <div class="reactor-mode-pill" id="hudActiveProviderPill">LINK: OPENROUTER // GEMMA 26B</div>
+                        <div style="font-size:2rem; font-weight:700; color:#fff;" id="fullCpuVal">0%</div>
+                        <div style="font-size:0.75rem; color:#7f9cb8;" id="fullCpuCores">Cores / Multi-threading</div>
                     </div>
-
-                    <!-- Hardware Telemetry Gauges -->
-                    <div class="telemetry-grid">
-                        <div class="gauge-card">
-                            <div class="gauge-svg-container">
-                                <svg class="gauge-svg" width="68" height="68">
-                                    <circle class="gauge-bg" cx="34" cy="34" r="30"></circle>
-                                    <circle class="gauge-progress" id="cpuProgress" cx="34" cy="34" r="30"></circle>
-                                </svg>
-                                <div class="gauge-value" id="cpuVal">0%</div>
-                            </div>
-                            <div class="gauge-label">CPU LOAD</div>
+                    <div class="provider-card">
+                        <div style="color:#00d2ff; font-weight:600; display:flex; align-items:center; gap:6px;">
+                            <svg class="fluent-svg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00d2ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line><line x1="18" y1="6" x2="18.01" y2="6"></line><line x1="18" y1="18" x2="18.01" y2="18"></line><rect x="9" y="9" width="6" height="6"></rect></svg>
+                            SYSTEM RAM
                         </div>
-
-                        <div class="gauge-card">
-                            <div class="gauge-svg-container">
-                                <svg class="gauge-svg" width="68" height="68">
-                                    <circle class="gauge-bg" cx="34" cy="34" r="30"></circle>
-                                    <circle class="gauge-progress" id="ramProgress" cx="34" cy="34" r="30"></circle>
-                                </svg>
-                                <div class="gauge-value" id="ramVal">0%</div>
-                            </div>
-                            <div class="gauge-label">MEMORY</div>
-                        </div>
-
-                        <div class="gauge-card">
-                            <div class="gauge-svg-container">
-                                <svg class="gauge-svg" width="68" height="68">
-                                    <circle class="gauge-bg" cx="34" cy="34" r="30"></circle>
-                                    <circle class="gauge-progress" id="diskProgress" cx="34" cy="34" r="30"></circle>
-                                </svg>
-                                <div class="gauge-value" id="diskVal">0%</div>
-                            </div>
-                            <div class="gauge-label">STORAGE</div>
-                        </div>
-
-                        <div class="gauge-card">
-                            <div class="gauge-svg-container">
-                                <svg class="gauge-svg" width="68" height="68">
-                                    <circle class="gauge-bg" cx="34" cy="34" r="30"></circle>
-                                    <circle class="gauge-progress" id="batProgress" cx="34" cy="34" r="30"></circle>
-                                </svg>
-                                <div class="gauge-value" id="batVal">100%</div>
-                            </div>
-                            <div class="gauge-label">POWER</div>
-                        </div>
+                        <div style="font-size:2rem; font-weight:700; color:#fff;" id="fullRamVal">0%</div>
+                        <div style="font-size:0.75rem; color:#7f9cb8;" id="fullRamUsage">0 GB / 0 GB</div>
                     </div>
-
-                    <!-- System Specs Card -->
-                    <div class="system-specs-card">
-                        <div class="spec-row">
-                            <span>HOST:</span>
-                            <span class="spec-val" id="specHost">STARK-PC</span>
+                    <div class="provider-card">
+                        <div style="color:#00d2ff; font-weight:600; display:flex; align-items:center; gap:6px;">
+                            <svg class="fluent-svg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00d2ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="12" x2="2" y2="12"></line><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path><line x1="6" y1="16" x2="6.01" y2="16"></line><line x1="10" y1="16" x2="10.01" y2="16"></line></svg>
+                            STORAGE STATUS
                         </div>
-                        <div class="spec-row">
-                            <span>OS:</span>
-                            <span class="spec-val" id="specOS">Windows 11</span>
-                        </div>
-                        <div class="spec-row">
-                            <span>UPTIME:</span>
-                            <span class="spec-val" id="specUptime">0h 0m</span>
-                        </div>
-                        <div class="spec-row">
-                            <span>NET I/O:</span>
-                            <span class="spec-val" id="specNet">↑0M ↓0M</span>
-                        </div>
+                        <div style="font-size:2rem; font-weight:700; color:#fff;" id="fullDiskVal">0%</div>
+                        <div style="font-size:0.75rem; color:#7f9cb8;" id="fullDiskUsage">Primary Drive</div>
                     </div>
-
-                    <!-- Quick Protocols Trigger List -->
-                    <div style="font-family:var(--font-sci-fi); font-size:0.75rem; color:var(--stark-cyan); letter-spacing:1px; margin-top:2px;">
-                        DIRECT PROTOCOLS
-                    </div>
-                    <div class="quick-protocol-list">
-                        <button class="quick-proto-btn" data-proto="diagnostics">
-                            <span>⚡</span> <span>Diagnostic Sweep</span>
-                        </button>
-                        <button class="quick-proto-btn" data-proto="threat_scan">
-                            <span>🛡️</span> <span>Threat & Anomaly Scan</span>
-                        </button>
-                        <button class="quick-proto-btn" data-proto="deep_ocr">
-                            <span>👁️</span> <span>Desktop Screenshot & OCR</span>
-                        </button>
-                        <button class="quick-proto-btn" data-proto="clean_slate">
-                            <span>🧹</span> <span>Clean Slate Protocol</span>
-                        </button>
+                    <div class="provider-card">
+                        <div style="color:#00d2ff; font-weight:600; display:flex; align-items:center; gap:6px;">
+                            <svg class="fluent-svg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00d2ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                            SYSTEM HOST
+                        </div>
+                        <div style="font-size:1.3rem; font-weight:700; color:#ffb700;" id="fullHostVal">STARK-PC</div>
+                        <div style="font-size:0.75rem; color:#7f9cb8;" id="fullUptimeVal">Uptime: 0h</div>
                     </div>
                 </div>
-            </aside>
-
-            <!-- CENTER COLUMN: NEURAL COMMUNICATION & PROMPT MATRIX -->
-            <section class="hud-panel" style="grid-column: 2;">
-                <div class="panel-header">
-                    <span>📡 NEURAL COMMUNICATION MATRIX</span>
-                    <span id="centerLinkStatus" style="font-size:0.7rem; color:var(--stark-cyan);">STREAMING LINK ACTIVE</span>
-                </div>
-
-                <!-- Chat Feed Stream -->
-                <div class="chat-stream-container" id="chatStream">
-                    <!-- Messages will be injected here dynamically -->
-                </div>
-
-                <!-- Quick Prompt Chips -->
-                <div class="quick-prompt-chips">
-                    <button class="chip-btn" data-prompt="وضعیت کامل سخت‌افزار و زیرسیستم‌های سیستم را بررسی و گزارش کن.">📊 بررسی سیستم</button>
-                    <button class="chip-btn" data-prompt="یک اسکرین شات از صفحه بگیر و بگو الان چی روی دسکتاپ بازه؟">📸 اسکرین‌شات و تحلیل</button>
-                    <button class="chip-btn" data-prompt="ماشین‌حساب ویندوز را برای انجام محاسبات باز کن.">🚀 باز کردن ماشین‌حساب</button>
-                    <button class="chip-btn" data-prompt="پروتکل بررسی ناهنجاری‌ها و تهدیدات منابع (Threat Scan) را اجرا کن.">🛡️ پروتکل امنیت</button>
-                    <button class="chip-btn" data-prompt="How is the Mark-85 armor integrity and reactor plasma levels?">🇬🇧 English Telemetry</button>
-                </div>
-
-                <!-- Prompt Console Input -->
-                <div class="prompt-console-wrapper">
-                    <div class="prompt-input-row">
-                        <input type="text" id="chatPromptInput" class="hud-input" placeholder="دستور، سوال یا پرامپت خود را برای جارویس وارد کنید..." autocomplete="off">
-                        <button id="chatSendBtn" class="hud-send-btn">
-                            <span>TRANSMIT</span>
-                            <span>▶</span>
-                        </button>
+                <div class="provider-card" style="flex:1; overflow:hidden; display:flex; flex-direction:column;">
+                    <div style="color:#00d2ff; font-weight:600; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+                        <svg class="fluent-svg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00d2ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"></line><line x1="10" y1="12" x2="21" y2="12"></line><line x1="10" y1="18" x2="21" y2="18"></line><path d="M4 6h1v4"></path><path d="M4 10h2"></path><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"></path></svg>
+                        TOP RESOURCE CONSUMING PROCESSES
                     </div>
+                    <div id="fullProcessList" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:6px;"></div>
                 </div>
-            </section>
+            </div>
 
-            <!-- RIGHT COLUMN: MULTI-TAB WORKSPACE (OCR LAB / PROTOCOLS / TERMINAL / VAULT) -->
-            <aside class="hud-panel">
-                <nav class="right-tab-bar">
-                    <button class="tab-btn active" data-tab="tabOcr">🔬 OCR LAB</button>
-                    <button class="tab-btn" data-tab="tabProtocols">⚡ PROTOCOLS</button>
-                    <button class="tab-btn" data-tab="tabTerminal">💻 TERMINAL</button>
-                    <button class="tab-btn" data-tab="tabVault">🧠 VAULT</button>
-                    <button class="tab-btn" data-tab="tabChats">💬 CHATS</button>
-                </nav>
-
-                <!-- TAB 1: OCR & VISION LAB -->
-                <div id="tabOcr" class="tab-content active">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span style="font-family:var(--font-sci-fi); font-size:0.78rem; color:var(--stark-cyan);">GLM-OCR OPTICAL LAB</span>
-                        <button id="ocrScreenCaptureBtn" class="hud-btn-icon" style="font-size:0.75rem; padding:3px 8px;">
-                            📸 SCREENSHOT
-                        </button>
-                    </div>
-
-                    <!-- Dropzone -->
-                    <div class="ocr-dropzone" id="ocrDropzone">
-                        <input type="file" id="ocrFileInput" accept="image/*" style="display:none;">
-                        <img id="ocrPreview" class="ocr-preview-img" style="display:none;" alt="Preview">
-                        <div class="dropzone-text">
-                            <div style="font-size:1.4rem; color:var(--stark-cyan);">📂</div>
-                            <div style="font-size:0.8rem; color:#fff; font-weight:600;">DRAG & DROP IMAGE HERE</div>
-                            <div style="font-size:0.7rem; color:var(--text-secondary);">یا تصویر را Paste کنید (Ctrl+V)</div>
-                        </div>
-                    </div>
-
-                    <!-- Model selector -->
-                    <div style="display:flex; gap:6px; align-items:center;">
-                        <span style="font-family:var(--font-telemetry); font-size:0.75rem; color:var(--text-secondary);">MODEL:</span>
-                        <select id="ocrModelSelect" style="background:#02050e; border:1px solid rgba(0,240,255,0.3); color:var(--stark-cyan); border-radius:4px; font-family:var(--font-telemetry); font-size:0.8rem; padding:4px; flex:1;">
-                            <option value="glm-ocr:latest">GLM-OCR (Ollama 1.1B)</option>
-                            <option value="qwen3.5:4b">Qwen3.5-4B Vision</option>
+            <!-- ========================================================= -->
+            <!-- VIEW 7: VOICE & AUDIO SYNTHESIS -->
+            <!-- ========================================================= -->
+            <div id="view-voice" class="desktop-view-page">
+                <h2 style="font-family:var(--fluent-font-title); font-size:1.35rem; color:#ffffff; margin-bottom:4px; display:flex; align-items:center;">
+                    <svg class="fluent-svg-icon view-header-icon" viewBox="0 0 24 24" fill="none" stroke="var(--stark-cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4a4 4 0 0 1 0 8"></path><path d="M19 2a8 8 0 0 1 0 12"></path><path d="M12 14v2a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3v-2"></path><circle cx="7" cy="7" r="4"></circle></svg>
+                    Voice & Audio Synthesis Matrix
+                </h2>
+                <div style="font-size:0.82rem; color:#8fa8c2; margin-bottom:16px;">
+                    Configure neural voice synthesis engines for classic British and American J.A.R.V.I.S. speech personas.
+                </div>
+                <div style="max-width:580px; display:flex; flex-direction:column; gap:14px; background:var(--fluent-card-bg); padding:20px; border-radius:var(--fluent-radius-lg); border:var(--fluent-border);">
+                    <div>
+                        <label class="provider-input-label">TTS ENGINE</label>
+                        <select id="mainTtsEngineSelect" class="fluent-input" style="width:100%; margin-top:4px;">
+                            <option value="edge">Edge TTS (Cloud / High Quality)</option>
+                            <option value="piper">Piper TTS (Local / Offline ONNX)</option>
+                            <option value="browser">Browser TTS (Fallback)</option>
                         </select>
                     </div>
-
-                    <!-- Action buttons -->
-                    <div style="display:flex; gap:6px;">
-                        <button id="ocrScanBtn" class="hud-btn-icon" style="flex:1; justify-content:center; padding:6px 0;" disabled>
-                            ⚡ EXTRACT OCR
-                        </button>
-                        <button id="ocrSendPromptBtn" class="hud-btn-icon" style="display:none; padding:6px 10px;" title="Send Extracted Text to JARVIS Prompt">
-                            💬 ASK JARVIS
-                        </button>
-                        <button id="ocrCopyBtn" class="hud-btn-icon" style="display:none; padding:6px 8px;" title="Copy Extracted Markdown">
-                            📋 COPY
-                        </button>
+                    <div>
+                        <label class="provider-input-label">VOICE MODEL & PERSONA</label>
+                        <select id="mainTtsVoiceSelect" class="fluent-input" style="width:100%; margin-top:4px;">
+                            <option value="en_US-Male">English (US) - Christopher Neural (Jarvis Classic Tone)</option>
+                            <option value="en_US-Female">English (US) - Aria Neural (High Definition Clarity)</option>
+                            <option value="en_GB-Male">English (UK) - Ryan Neural (Polite British Butler)</option>
+                            <option value="en_GB-Female">English (UK) - Sonia Neural (Crisp British Protocol)</option>
+                        </select>
                     </div>
-
-                    <!-- OCR Result Box -->
-                    <div class="ocr-result-box" id="ocrResultBox">// Optical character tensors standing by. Drop or paste any document/code image...</div>
-                </div>
-
-                <!-- TAB 2: PROTOCOLS MATRIX -->
-                <div id="tabProtocols" class="tab-content">
-                    <div style="font-family:var(--font-sci-fi); font-size:0.78rem; color:var(--stark-cyan); margin-bottom:4px;">
-                        STARK PROTOCOL DIRECTIVES
-                    </div>
-                    <div id="protocolMatrixGrid" style="display:flex; flex-direction:column; gap:8px;">
-                        <!-- Injected via protocols.js -->
-                    </div>
-                </div>
-
-                <!-- TAB 3: SCI-FI TERMINAL -->
-                <div id="tabTerminal" class="tab-content">
-                    <div style="font-family:var(--font-sci-fi); font-size:0.78rem; color:var(--stark-cyan); margin-bottom:4px;">
-                        MARK-85 COMMAND TERMINAL
-                    </div>
-                    <div class="terminal-output" id="terminalOutput"></div>
-                    <div class="terminal-input-row">
-                        <span class="terminal-prompt-symbol">JARVIS&gt;</span>
-                        <input type="text" id="terminalInput" class="hud-input" style="padding:6px 8px; font-size:0.85rem; font-family:var(--font-telemetry);" placeholder="Enter system command (e.g. dir, ping)...">
-                    </div>
-                </div>
-
-                <!-- TAB 4: NEURAL MEMORY VAULT -->
-                <div id="tabVault" class="tab-content">
-                    <div style="font-family:var(--font-sci-fi); font-size:0.78rem; color:var(--stark-cyan);">
-                        NEURAL MEMORY & DIRECTIVES
-                    </div>
-                    <!-- Add Note Section -->
-                    <div style="margin-top: 15px; border-top:1px solid rgba(0, 255, 255, 0.2); padding-top:15px;">
-                        <span style="font-size:0.75rem; color:var(--stark-cyan); display:block; margin-bottom:5px;">ADD NEURAL NOTE</span>
-                        <input type="text" id="noteTitleInput" class="hud-input" placeholder="Note Title" style="margin-bottom:8px;">
-                        <textarea id="noteContentInput" class="hud-input" placeholder="Note Content..." style="height: 60px; margin-bottom:8px; resize:none;"></textarea>
-                        <button id="saveNoteBtn" class="hud-btn-outline" style="width:100%;">💾 STORE TO VAULT</button>
-                    </div>
-                    <!-- Notes List -->
-                    <div id="vaultNotesList" style="display:flex; flex-direction:column; gap:6px; flex:1; overflow-y:auto;"></div>
-                </div>
-
-                <!-- TAB 5: CHAT HISTORY -->
-                <div id="tabChats" class="tab-content" style="display:none;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
-                        <span style="font-family:var(--font-sci-fi); font-size:0.78rem; color:var(--stark-cyan);">CONVERSATION LOGS</span>
-                        <button id="newChatBtn" class="hud-btn-icon" style="font-size:0.75rem; padding:3px 8px;">
-                            ➕ NEW THREAD
+                    <div style="display:flex; gap:10px; margin-top:6px;">
+                        <button id="testVoiceBtn" class="fluent-btn btn-primary" style="flex:1; padding:10px;">
+                            <svg class="fluent-svg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                            TEST VOICE PHRASE
                         </button>
                     </div>
-                    
-                    <div id="chatHistoryList" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:8px;">
-                        <!-- Conversation threads injected here -->
+                </div>
+            </div>
+
+            <!-- ========================================================= -->
+            <!-- VIEW 8: MARK-86 DESKTOP SETTINGS -->
+            <!-- ========================================================= -->
+            <div id="view-settings" class="desktop-view-page">
+                <h2 style="font-family:var(--fluent-font-title); font-size:1.35rem; color:#ffffff; margin-bottom:4px; display:flex; align-items:center;">
+                    <svg class="fluent-svg-icon view-header-icon" viewBox="0 0 24 24" fill="none" stroke="var(--stark-cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    Mark-86 Desktop Preferences
+                </h2>
+                <div style="font-size:0.82rem; color:#8fa8c2; margin-bottom:16px;">
+                    Configure Windows 11 desktop integration, token limits, and global shortcuts.
+                </div>
+                <div style="max-width:640px; display:flex; flex-direction:column; gap:14px;">
+                    <div class="provider-card">
+                        <div style="font-weight:600; color:#00d2ff; display:flex; align-items:center; gap:6px;">
+                            <svg class="fluent-svg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00d2ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><line x1="6" y1="8" x2="6.01" y2="8"></line><line x1="10" y1="8" x2="10.01" y2="8"></line><line x1="14" y1="8" x2="14.01" y2="8"></line><line x1="18" y1="8" x2="18.01" y2="8"></line><line x1="6" y1="12" x2="6.01" y2="12"></line><line x1="18" y1="12" x2="18.01" y2="12"></line><line x1="7" y1="16" x2="17" y2="16"></line></svg>
+                            GLOBAL SUMMON SHORTCUT
+                        </div>
+                        <div style="font-size:0.82rem; color:#8fa8c2; margin-top:2px;">
+                            Press <kbd style="background:#000; padding:2px 6px; border-radius:4px; border:1px solid #333; color:#fff;">Ctrl + Shift + J</kbd> from any application in Windows to summon or minimize JARVIS.
+                        </div>
+                    </div>
+                    <div class="provider-card">
+                        <div style="font-weight:600; color:#00d2ff; display:flex; align-items:center; gap:6px;">
+                            <svg class="fluent-svg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00d2ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14v-4"></path><path d="M3.34 19a10 10 0 1 1 17.32 0"></path></svg>
+                            TOKEN BUDGET LIMIT
+                        </div>
+                        <div style="font-size:0.82rem; color:#8fa8c2; margin-top:2px;">
+                            Maximum output completion tokens per response turn:
+                        </div>
+                        <div style="display:flex; align-items:center; gap:12px; margin-top:8px;">
+                            <input type="range" id="maxTokenSlider" min="500" max="4000" step="100" value="1500" style="flex:1;">
+                            <span id="maxTokenVal" style="font-family:var(--font-telemetry); color:#00ffaa; font-weight:600;">1500 tokens</span>
+                        </div>
+                    </div>
+                    <div class="provider-card">
+                        <div style="font-weight:600; color:#00d2ff; display:flex; align-items:center; gap:6px;">
+                            <svg class="fluent-svg-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00d2ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                            WINDOWS 11 MICA SHIELD
+                        </div>
+                        <div style="font-size:0.82rem; color:#8fa8c2; margin-top:2px;">
+                            Native Mica / Acrylic material with blurred glass background is active.
+                        </div>
                     </div>
                 </div>
-            </aside>
-        </main>
+            </div>
+
+        </div>
     </div>
 
-    <!-- HOLOGRAPHIC AI CONFIGURATION MODAL -->
-    <div id="configModalOverlay" class="hud-modal-overlay">
-        <div class="hud-modal">
-            <div class="hud-modal-header">
-                <div class="hud-modal-title">
-                    <span>⚙️</span>
-                    <span>AI BRAIN & PROVIDER CONFIGURATION</span>
-                </div>
-                <button id="configModalCloseBtn" class="hud-modal-close">✕</button>
-            </div>
-
-            <!-- Provider Selection Tabs -->
-            <div class="provider-switch-group">
-                <button type="button" class="provider-chip-btn active" id="provOpenRouterBtn" data-provider="openrouter">
-                    <span style="font-size:1.1rem;">🌐</span>
-                    <span>OPENROUTER (CLOUD)</span>
-                    <span style="font-size:0.65rem; color:var(--stark-green);">Gemma 26B / Llama 70B</span>
-                </button>
-                <button type="button" class="provider-chip-btn" id="provOllamaBtn" data-provider="ollama">
-                    <span style="font-size:1.1rem;">⚡</span>
-                    <span>OLLAMA (LOCAL)</span>
-                    <span style="font-size:0.65rem; color:var(--stark-cyan);">Qwen3.5 4B / Offline</span>
-                </button>
-            </div>
-
-            <!-- OpenRouter Settings Section -->
-            <div id="openrouterSettingsGroup" class="config-field-group">
-                <label class="config-label">OPENROUTER API KEY</label>
-                <div style="display:flex; gap:6px;">
-                    <input type="password" id="openrouterApiKeyInput" class="hud-input" placeholder="sk-or-v1-..." style="font-family:monospace; font-size:0.85rem;">
-                    <button type="button" id="toggleApiKeyVisBtn" class="hud-btn-icon" style="padding:0 10px;">👁️</button>
-                </div>
-                
-                <label class="config-label" style="margin-top:8px;">TARGET MODEL IDENTIFIER</label>
-                <select id="openrouterModelSelect" class="hud-input" style="background:#02050e; color:var(--stark-cyan); font-family:var(--font-telemetry);">
-                    <option value="google/gemma-4-26b-a4b-it:free">Google Gemma 4 26B (Free - Default)</option>
-                    <option value="poolside/laguna-s-2.1:free">Laguna 2.1 (Free)</option>
-                    <option value="cohere/north-mini-code:free">Cohere North Mini Code (Free)</option>
-                    <option value="custom">-- Custom Model ID (from OpenRouter) --</option>
-                </select>
-                <input type="text" id="customModelInput" class="hud-input" placeholder="e.g. mistralai/mistral-large-2407" style="display:none; margin-top:4px; font-family:monospace; font-size:0.85rem;">
-            </div>
-
-            <!-- Ollama Settings Section -->
-            <div id="ollamaSettingsGroup" class="config-field-group" style="display:none;">
-                <label class="config-label">LOCAL OLLAMA MODEL</label>
-                <input type="text" id="ollamaModelInput" class="hud-input" value="qwen3.5:4b" style="font-family:monospace; font-size:0.85rem;">
-                <span style="font-size:0.7rem; color:var(--text-dim);">Requires local Ollama running on http://localhost:11434</span>
-            </div>
-
-            <!-- Voice Synthesis Settings -->
-            <div class="config-field-group">
-                <label class="config-label">VOICE ENGINE</label>
-                <select id="ttsEngineSelect" class="hud-input" style="background:#02050e; color:var(--stark-cyan); font-family:var(--font-telemetry);">
-                    <option value="edge">Edge TTS (Cloud / High Quality)</option>
-                    <option value="piper">Piper TTS (Local / Offline)</option>
-                    <option value="browser">Browser TTS (Web API / Fallback)</option>
-                </select>
-
-                <label class="config-label" style="margin-top:8px;">VOICE MODEL</label>
-                <select id="ttsVoiceSelect" class="hud-input" style="background:#02050e; color:var(--stark-cyan); font-family:var(--font-telemetry);">
-                    <option value="fa_IR-Male">Persian - Male (Farid/Amir)</option>
-                    <option value="fa_IR-Female">Persian - Female (Dilara)</option>
-                    <option value="en_US-Male">English - Male (Christopher/Lessac)</option>
-                    <option value="en_US-Female">English - Female (Aria)</option>
-                </select>
-            </div>
-
-            <!-- Save & Test Actions -->
-            <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid rgba(0,240,255,0.2); padding-top:12px;">
-                <span id="configStatusMsg" style="font-family:var(--font-telemetry); font-size:0.78rem; color:var(--stark-cyan);"></span>
-                <button type="button" id="saveProviderConfigBtn" class="hud-send-btn" style="padding:8px 18px;">
-                    SAVE & APPLY
-                </button>
-            </div>
+    <!-- Holographic Avatar Overlay Canvas (Toggleable) -->
+    <div id="hologramContainer" style="position:fixed; bottom:20px; right:20px; width:340px; height:380px; z-index:9000; pointer-events:auto; display:none; border-radius:16px; overflow:hidden; background:rgba(8,14,24,0.8); border:1px solid rgba(0,240,255,0.4); box-shadow:0 0 25px rgba(0,240,255,0.3); backdrop-filter:blur(20px);">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:rgba(0,0,0,0.5); border-bottom:1px solid rgba(0,240,255,0.2);">
+            <span style="font-size:0.75rem; color:#00d2ff; font-family:var(--font-sci-fi); display:flex; align-items:center; gap:6px;">
+                <svg class="fluent-svg-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00d2ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                3D HOLOGRAPHIC AVATAR
+            </span>
+            <button onclick="document.getElementById('hologramContainer').style.display='none'" style="background:none; border:none; color:#fff; cursor:pointer;">✕</button>
         </div>
     </div>
 
@@ -437,5 +698,6 @@
     <script src="js/protocols.js"></script>
     <script src="js/app.js"></script>
     <script src="js/file_handler.js"></script>
+    <script src="js/fluent_providers.js"></script>
 </body>
 </html>

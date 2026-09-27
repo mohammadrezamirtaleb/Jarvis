@@ -34,6 +34,11 @@ def validate_command(command: str) -> bool:
     """
     cmd = command.strip().lower()
     
+    # Reject commands containing chaining or redirection characters to prevent bypass
+    chaining_chars = ["&", "|", ";", ">", "<", "`"]
+    if any(char in cmd for char in chaining_chars):
+        return False
+
     # Whitelist of allowed basic commands
     allowed_starts = [
         "ipconfig", "ping", "echo", "dir", "systeminfo",

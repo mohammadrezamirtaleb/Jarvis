@@ -1,12 +1,11 @@
 """
-J.A.R.V.I.S. Neural LLM Engine & Stark Prompt Interface
-Supports Local Ollama (qwen3.5:4b) and Cloud OpenRouter (google/gemma-4-26b-a4b-it:free, Llama-3.3, etc.)
-with real-time SSE streaming and autonomous tool execution.
+J.A.R.V.I.S. Neural LLM Engine (Mark-86 Universal Multi-Provider)
+Coordinates 10 International AI Providers with Token-Efficient Prompt Engineering,
+Real-Time SSE Streaming, and Autonomous Stark Tool Directives.
 """
 
 import json
 import re
-import httpx
 from typing import AsyncGenerator, Dict, Any, List, Optional
 
 from .system_tools import (
@@ -22,23 +21,19 @@ from .smart_actions import (
 )
 from .memory_vault import vault
 from .protocols import execute_protocol
+from .providers.registry import provider_registry
+from .providers.base import LLMProvider
 
-OLLAMA_API_BASE = "http://localhost:11434"
-OPENROUTER_API_BASE = "https://openrouter.ai/api/v1"
-
-DEFAULT_OLLAMA_MODEL = "qwen3.5:4b"
-DEFAULT_OPENROUTER_MODEL = "google/gemma-4-26b-a4b-it:free"
-
-JARVIS_SYSTEM_PROMPT = """You are J.A.R.V.I.S. (Just A Rather Very Intelligent System), the world's most advanced AI created by Tony Stark (Stark Industries Mark 86 OS).
+JARVIS_SYSTEM_PROMPT = """You are J.A.R.V.I.S. (Just A Rather Very Intelligent System), the world's most advanced AI created by Tony Stark (Stark Industries Mark 86 OS - Windows 11 Native Edition).
 
 CORE IDENTITY & PERSONALITY:
 - Tone: Highly sophisticated, witty, deeply loyal, calm, polite, and razor-sharp.
-- Address the user respectfully as "Sir", "Boss", or in Persian "جناب", "قربان", or "جناب استارک".
-- Language Fluency: Perfectly bilingual. If addressed in Persian, respond in refined, fluent, natural, and respectful Persian (فارسی روان و محترمانه). If addressed in English, respond in classic British JARVIS eloquence.
-- Keep responses concise, direct, and actionable. Avoid unnecessary fluff.
+- Address the user respectfully as "Sir", "Commander", or "Boss".
+- Language Fluency: Respond in classic British J.A.R.V.I.S. eloquence with crisp, articulate English.
+- Keep responses concise, direct, and actionable to conserve neural tokens and maintain maximum speed.
 
 AUTONOMOUS TOOL CAPABILITIES:
-When the user requests an action, system task, or OS operation, you can emit special ACTION tags directly in your response:
+When the user requests an action, system task, or OS operation, emit special ACTION tags directly in your response:
 1. Launch applications: `[[ACTION:open_app, app:"notepad"]]`
 2. Open website: `[[ACTION:open_url, url:"https://google.com"]]`
 3. Check hardware & diagnostics: `[[ACTION:system_vitals]]`
@@ -51,17 +46,10 @@ When the user requests an action, system task, or OS operation, you can emit spe
 10. Write File: `[[ACTION:write_file, filepath:"...", content:"..."]]`
 11. Check Weather: `[[ACTION:get_weather, location:"..."]]`
 12. Summarize Webpage: `[[ACTION:summarize_url, url:"..."]]`
-13. Show Holographic Avatar: `[[ACTION:show_avatar]]` (Use this when the user asks you to show yourself, reveal your face, etc.)
-14. Hide Holographic Avatar: `[[ACTION:hide_avatar]]` (Use this when the user asks you to hide or close your face)
+13. Show Holographic Avatar: `[[ACTION:show_avatar]]`
+14. Hide Holographic Avatar: `[[ACTION:hide_avatar]]`
 
-Example:
-User: "یک اسکرین شات از دسکتاپ بگیر و سیستم رو چک کن"
-JARVIS: "در حال ثبت تصویر دسکتاپ و بررسی وضعیت زیرسیستم‌های مارک ۸۶، قربان.
-[[ACTION:screenshot]]
-[[ACTION:system_vitals]]"
-
-Always maintain your character as the ultimate Tony Stark AI assistant.
-"""
+Always maintain your character as the ultimate Tony Stark AI assistant."""
 
 
 def parse_and_execute_actions(text: str) -> List[Dict[str, Any]]:
@@ -140,170 +128,62 @@ def parse_and_execute_actions(text: str) -> List[Dict[str, Any]]:
                 res = summarize_url(url)
                 actions_executed.append({"action": "summarize_url", "result": res})
 
+            elif action_name in ["show_avatar", "hide_avatar"]:
+                actions_executed.append({"action": action_name, "result": {"success": True}})
+
         except Exception as e:
             actions_executed.append({"action": action_name, "error": str(e)})
 
     return actions_executed
 
 
-async def stream_ollama(
-    formatted_messages: List[Dict[str, str]],
-    model: str
-) -> AsyncGenerator[Dict[str, Any], None]:
-    """Stream response from local Ollama service using async httpx."""
-    payload = {
-        "model": model or DEFAULT_OLLAMA_MODEL,
-        "messages": formatted_messages,
-        "stream": True,
-        "options": {
-            "temperature": 0.7,
-            "top_p": 0.9,
-            "repeat_penalty": 1.1
-        }
-    }
-
-    full_accumulated_text = ""
-    try:
-        async with httpx.AsyncClient(timeout=httpx.Timeout(120.0)) as client:
-            async with client.stream("POST", f"{OLLAMA_API_BASE}/api/chat", json=payload) as response:
-                if response.status_code != 200:
-                    yield {"type": "error", "error": f"Ollama API Error {response.status_code}"}
-                    return
-
-                async for line in response.aiter_lines():
-                    if line:
-                        chunk = json.loads(line)
-                        msg = chunk.get("message", {})
-                        content_token = msg.get("content", "")
-                        
-                        if content_token:
-                            full_accumulated_text += content_token
-                            yield {"type": "token", "token": content_token}
-
-                        if chunk.get("done", False):
-                            actions = parse_and_execute_actions(full_accumulated_text)
-                            yield {
-                                "type": "done",
-                                "full_text": full_accumulated_text,
-                                "actions": actions
-                            }
-                            return
-
-    except httpx.ConnectError:
-        # Try auto-starting ollama serve in background if not running
-        try:
-            import subprocess
-            subprocess.Popen(["ollama", "serve"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        except Exception:
-            pass
-        yield {
-            "type": "error",
-            "error": "⚠️ سرویس Ollama لوکال روی پورت ۱۱۴۳۴ در دسترس نیست.\nبرنامه در حال استارت خودکار 'ollama serve' است. لطفاً چند ثانیه دیگر دوباره پیام دهید یا نرم‌افزار Ollama را روی ویندوز باز کنید."
-        }
-    except Exception as e:
-        yield {"type": "error", "error": f"⚠️ خطای ارتباط با Ollama: {str(e)}"}
-
-
-async def stream_openrouter(
-    formatted_messages: List[Dict[str, str]],
-    model: str,
-    api_key: Optional[str] = None
-) -> AsyncGenerator[Dict[str, Any], None]:
-    """Stream response from OpenRouter API using async httpx."""
-    prov_cfg = vault.get_provider_config()
-    key = api_key or prov_cfg.get("openrouter_api_key", "")
-    target_model = model or prov_cfg.get("openrouter_model", DEFAULT_OPENROUTER_MODEL)
-
-    if not key:
-        yield {"type": "error", "error": "⚠️ کلید OpenRouter API تنظیم نشده است. لطفاً از دکمه ⚙️ CONFIG در بالای صفحه کلید را وارد کنید."}
-        return
-
-    headers = {
-        "Authorization": f"Bearer {key}",
-        "Content-Type": "application/json",
-        "HTTP-Referer": "http://localhost:8000",
-        "X-Title": "JARVIS Mark-86 Core"
-    }
-
-    payload = {
-        "model": target_model,
-        "messages": formatted_messages,
-        "stream": True,
-        "temperature": 0.7,
-        "top_p": 0.9
-    }
-
-    full_accumulated_text = ""
-    try:
-        async with httpx.AsyncClient(timeout=httpx.Timeout(120.0)) as client:
-            async with client.stream("POST", f"{OPENROUTER_API_BASE}/chat/completions", headers=headers, json=payload) as response:
-                if response.status_code != 200:
-                    err_msg = await response.aread()
-                    try:
-                        err_json = json.loads(err_msg)
-                        raw_err = err_json.get("error", {})
-                        if isinstance(raw_err, dict):
-                            err_msg = raw_err.get("message", err_msg)
-                        elif isinstance(raw_err, str):
-                            err_msg = raw_err
-                    except Exception:
-                        err_msg = err_msg.decode("utf-8")
-
-                    if response.status_code == 429:
-                        yield {
-                            "type": "error",
-                            "error": f"⚠️ مدل `{target_model}` در سرورهای ابری با محدودیت موقت ترافیک (Rate-Limit) مواجه شده است.\n💡 پیشنهاد: مدل را از منوی بالای صفحه تغییر دهید."
-                        }
-                    else:
-                        yield {"type": "error", "error": f"⚠️ خطای OpenRouter ({response.status_code}): {err_msg}"}
-                    return
-
-                async for raw_line in response.aiter_lines():
-                    if not raw_line:
-                        continue
-                    line = raw_line.strip()
-                    
-                    if line.startswith(":"):
-                        continue  # SSE keepalive comment
-                    
-                    if line.startswith("data: "):
-                        data_str = line[6:].strip()
-                        if data_str == "[DONE]":
-                            break
-                        try:
-                            chunk = json.loads(data_str)
-                            choices = chunk.get("choices", [])
-                            if choices:
-                                delta = choices[0].get("delta", {})
-                                content_token = delta.get("content", "")
-                                if content_token:
-                                    full_accumulated_text += content_token
-                                    yield {"type": "token", "token": content_token}
-                        except Exception:
-                            pass
-
-                actions = parse_and_execute_actions(full_accumulated_text)
-                yield {
-                    "type": "done",
-                    "full_text": full_accumulated_text,
-                    "actions": actions
-                }
-
-    except Exception as e:
-        yield {"type": "error", "error": f"OpenRouter neural link error: {str(e)}"}
-
-
 async def stream_jarvis_chat(
     messages: List[Dict[str, str]],
-    provider: str = "openrouter",
+    provider: Optional[str] = None,
     model: Optional[str] = None,
     api_key: Optional[str] = None,
+    base_url: Optional[str] = None,
+    max_tokens: Optional[int] = None,
+    temperature: Optional[float] = None,
     include_system_context: bool = True
 ) -> AsyncGenerator[Dict[str, Any], None]:
     """
-    Unified multi-provider async SSE streaming generator for J.A.R.V.I.S.
+    Unified multi-provider async streaming generator for J.A.R.V.I.S. Mark 86.
+    Supports 10 providers with low-token sliding window context optimization.
     """
-    # Build complete message array with J.A.R.V.I.S. persona and memory context
+    prov_cfg = vault.get_provider_config()
+    target_provider_id = (provider or prov_cfg.get("active_provider", "openrouter")).lower()
+    
+    prov_instance = provider_registry.get(target_provider_id)
+    if not prov_instance:
+        yield {"type": "error", "error": f"⚠️ Unsupported provider: '{target_provider_id}'."}
+        return
+
+    # Extract target model & credentials
+    cfg_key = prov_cfg.get(f"{target_provider_id}_api_key", "")
+    cfg_model = prov_cfg.get(f"{target_provider_id}_model", prov_instance.default_model)
+    cfg_base_url = prov_cfg.get(f"{target_provider_id}_base_url", prov_instance.default_base_url)
+
+    target_key = api_key or cfg_key
+    
+    # Provider-aware model fallback: if model passed has OpenRouter prefix (e.g. google/gemma) but provider is local/direct (e.g. ollama), use provider default/configured model
+    if model:
+        is_openrouter_path = ":free" in model or model.endswith("free") or any(model.startswith(org) for org in ("google/", "meta-llama/", "anthropic/", "openai/"))
+        if target_provider_id == "ollama" and (is_openrouter_path or "gemma-4" in model):
+            target_model = cfg_model if (cfg_model and not any(cfg_model.startswith(org) for org in ("google/", "meta-llama/", "anthropic/", "openai/"))) else prov_instance.default_model
+        elif target_provider_id in ["openai", "anthropic", "google", "grok", "zai"] and "/" in model:
+            target_model = cfg_model if (cfg_model and "/" not in cfg_model) else prov_instance.default_model
+        else:
+            target_model = model
+    else:
+        target_model = cfg_model or prov_instance.default_model
+
+    target_base_url = base_url or cfg_base_url
+    target_max_tokens = max_tokens or prov_cfg.get("max_tokens", 1500)
+    target_temp = temperature if temperature is not None else prov_cfg.get("temperature", 0.7)
+    low_token_mode = prov_cfg.get("low_token_mode", True)
+
+    # Build messages
     formatted_messages = []
     
     if include_system_context:
@@ -315,24 +195,64 @@ async def stream_jarvis_chat(
             v_ram = live_vitals.get("memory", {}).get("percent", 0)
             v_disk = live_vitals.get("disk", {}).get("percent", 0)
             v_host = live_vitals.get("system", {}).get("hostname", "STARK-PC")
-            v_uptime = live_vitals.get("system", {}).get("uptime_formatted", "1h")
-            top_p = [f"{p['name']} ({p['cpu']}%)" for p in live_vitals.get("top_processes", [])[:3]]
-            telemetry_ctx = f"\n[CURRENT LIVE SYSTEM TELEMETRY]: CPU={v_cpu}%, RAM={v_ram}%, STORAGE={v_disk}%, HOST={v_host}, UPTIME={v_uptime}, TOP_PROCESSES={', '.join(top_p)}"
+            telemetry_ctx = f"\n[TELEMETRY: CPU={v_cpu}%, RAM={v_ram}%, DISK={v_disk}%, HOST={v_host}]"
         except Exception:
             pass
 
-        full_system = f"{JARVIS_SYSTEM_PROMPT}{telemetry_ctx}\n\n[NEURAL MEMORY VAULT]:\n{memory_ctx}"
+        full_system = f"{JARVIS_SYSTEM_PROMPT}{telemetry_ctx}\n[MEMORY VAULT]: {memory_ctx}"
         formatted_messages.append({"role": "system", "content": full_system})
 
     for m in messages:
-        formatted_messages.append({
-            "role": m.get("role", "user"),
-            "content": m.get("content", "")
-        })
+        if m.get("role") != "system":
+            formatted_messages.append({
+                "role": m.get("role", "user"),
+                "content": m.get("content", "")
+            })
 
-    if provider.lower() == "openrouter":
-        async for chunk in stream_openrouter(formatted_messages, model=model or DEFAULT_OPENROUTER_MODEL, api_key=api_key):
-            yield chunk
-    else:
-        async for chunk in stream_ollama(formatted_messages, model=model or DEFAULT_OLLAMA_MODEL):
-            yield chunk
+    # Apply token optimization
+    optimized_messages = provider_registry.optimize_messages(
+        formatted_messages,
+        max_context_tokens=3000 if low_token_mode else 8000,
+        low_token_mode=low_token_mode
+    )
+
+    full_accumulated_text = ""
+    prompt_token_est = sum(LLMProvider.estimate_tokens(m.get("content", "")) for m in optimized_messages)
+
+    try:
+        async for chunk in prov_instance.stream_chat(
+            messages=optimized_messages,
+            model=target_model,
+            api_key=target_key,
+            base_url=target_base_url,
+            max_tokens=target_max_tokens,
+            temperature=target_temp
+        ):
+            chunk_type = chunk.get("type")
+            if chunk_type == "token":
+                token = chunk.get("token", "")
+                full_accumulated_text += token
+                yield chunk
+            elif chunk_type == "thinking":
+                yield chunk
+            elif chunk_type == "done":
+                full_text = chunk.get("full_text") or full_accumulated_text
+                actions = parse_and_execute_actions(full_text)
+                completion_token_est = LLMProvider.estimate_tokens(full_text)
+                yield {
+                    "type": "done",
+                    "full_text": full_text,
+                    "actions": actions,
+                    "provider": target_provider_id,
+                    "model": target_model,
+                    "usage": {
+                        "prompt_tokens_est": prompt_token_est,
+                        "completion_tokens_est": completion_token_est,
+                        "total_tokens_est": prompt_token_est + completion_token_est
+                    }
+                }
+            elif chunk_type == "error":
+                yield chunk
+
+    except Exception as e:
+        yield {"type": "error", "error": f"J.A.R.V.I.S. neural stream error: {str(e)}"}

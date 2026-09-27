@@ -43,7 +43,7 @@ class FileHandler {
                     const text = e.target.result;
                     if (window.jarvisApp) {
                         try {
-                            const res = await fetch('/api/vault/notes', {
+                            const res = await fetch('/api/vault/note', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({

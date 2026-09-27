@@ -80,7 +80,7 @@
 
 .gauge-label {
     font-family: var(--font-telemetry);
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     color: var(--text-secondary);
     letter-spacing: 1px;
     margin-top: 4px;
@@ -120,16 +120,18 @@
     background: rgba(0, 240, 255, 0.05);
     border: 1px solid rgba(0, 240, 255, 0.2);
     border-radius: 6px;
-    padding: 6px 10px;
+    padding: 7px 10px;
     color: var(--text-primary);
-    font-family: var(--font-telemetry);
+    font-family: var(--font-body);
     font-size: 0.8rem;
-    display: flex;
+    font-weight: 500;
+    display: inline-flex;
     align-items: center;
     gap: 8px;
     cursor: pointer;
     transition: all 0.2s ease;
     text-align: left;
+    width: 100%;
 }
 
 .quick-proto-btn:hover {
@@ -193,28 +195,52 @@
     justify-content: space-between;
     font-family: var(--font-telemetry);
     font-size: 0.75rem;
-    letter-spacing: 1px;
+    letter-spacing: 0.8px;
     color: var(--stark-cyan);
-    margin-bottom: 2px;
+    margin-bottom: 4px;
 }
 
-.msg-sender-row .msg-time {
+.msg-meta-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.msg-meta-actions .msg-time {
     color: var(--text-dim);
+    font-size: 0.72rem;
+}
+
+.msg-copy-btn {
+    background: rgba(0, 210, 255, 0.08);
+    border: 1px solid rgba(0, 210, 255, 0.22);
+    border-radius: 4px;
+    padding: 2px 7px;
+    color: var(--stark-cyan);
+    font-family: var(--fluent-font-code);
+    font-size: 0.68rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s ease;
+    line-height: 1;
+}
+
+.msg-copy-btn:hover {
+    background: rgba(0, 210, 255, 0.25);
+    border-color: var(--stark-cyan);
+    color: #fff;
+    box-shadow: 0 0 8px rgba(0, 210, 255, 0.3);
 }
 
 .msg-body {
-    font-size: 0.95rem;
+    font-size: 0.92rem;
     line-height: 1.55;
     color: var(--text-primary);
     word-break: break-word;
     user-select: text;
-}
-
-/* Persian direction auto-handling */
-.msg-body[dir="rtl"], .msg-body p:has([lang="fa"]) {
-    direction: rtl;
-    text-align: right;
-    font-family: 'Vazirmatn', sans-serif;
 }
 
 .msg-body pre {
@@ -228,8 +254,8 @@
 }
 
 .msg-body code {
-    font-family: 'Rajdhani', monospace, Consolas;
-    font-size: 0.88rem;
+    font-family: var(--font-telemetry);
+    font-size: 0.85rem;
     color: var(--stark-cyan);
 }
 
@@ -241,10 +267,13 @@
     border: 1px solid rgba(0, 240, 255, 0.3);
     color: var(--stark-cyan);
     padding: 2px 8px;
-    font-size: 0.7rem;
+    font-size: 0.72rem;
     border-radius: 4px;
     cursor: pointer;
-    font-family: var(--font-telemetry);
+    font-family: var(--font-body);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
 }
 
 .code-copy-btn:hover {
@@ -411,14 +440,10 @@
 /* Quick Prompt Suggestions */
 .quick-prompt-chips {
     display: flex;
+    flex-wrap: wrap;
     gap: 6px;
-    padding: 4px 14px;
+    padding: 6px 14px;
     overflow-x: auto;
-    scrollbar-width: none;
-}
-
-.quick-prompt-chips::-webkit-scrollbar {
-    display: none;
 }
 
 .chip-btn {
@@ -428,10 +453,14 @@
     border-radius: 14px;
     padding: 4px 10px;
     color: var(--text-secondary);
-    font-family: var(--font-telemetry);
+    font-family: var(--font-body);
     font-size: 0.78rem;
+    font-weight: 500;
     cursor: pointer;
     transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .chip-btn:hover {
@@ -462,10 +491,10 @@
     background: rgba(0, 240, 255, 0.05);
     border: 1px solid rgba(0, 240, 255, 0.3);
     border-radius: 6px;
-    padding: 10px 14px;
+    padding: 9px 12px;
     color: #fff;
     font-family: var(--font-body);
-    font-size: 0.95rem;
+    font-size: 0.88rem;
     outline: none;
     transition: all 0.2s ease;
 }
@@ -479,16 +508,16 @@
     background: linear-gradient(135deg, var(--stark-blue), var(--stark-cyan));
     border: none;
     border-radius: 6px;
-    padding: 10px 18px;
+    padding: 8px 16px;
     color: #000;
     font-family: var(--font-sci-fi);
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     font-weight: 700;
-    letter-spacing: 1px;
+    letter-spacing: 0.8px;
     cursor: pointer;
     box-shadow: 0 0 12px var(--stark-cyan);
     transition: all 0.2s ease;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 6px;
 }
@@ -505,20 +534,42 @@
     display: flex;
     background: rgba(0, 240, 255, 0.04);
     border-bottom: 1px solid rgba(0, 240, 255, 0.15);
+    overflow-x: auto;
+    scrollbar-width: none;
+    flex-wrap: nowrap;
+}
+
+.right-tab-bar::-webkit-scrollbar {
+    display: none;
 }
 
 .tab-btn {
-    flex: 1;
-    padding: 8px 4px;
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 7px 2px;
     background: transparent;
     border: none;
     border-bottom: 2px solid transparent;
     color: var(--text-secondary);
-    font-family: var(--font-telemetry);
-    font-size: 0.78rem;
+    font-family: var(--font-body);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
     cursor: pointer;
     transition: all 0.2s ease;
     text-align: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.tab-btn .fluent-svg-icon {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
 }
 
 .tab-btn:hover {
@@ -559,6 +610,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     gap: 8px;
 }
 
@@ -582,7 +634,7 @@
     border-radius: 6px;
     padding: 10px;
     font-family: var(--font-telemetry);
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     min-height: 120px;
     max-height: 200px;
     overflow-y: auto;
@@ -597,8 +649,8 @@
     border: 1px solid rgba(0, 240, 255, 0.2);
     border-radius: 6px;
     padding: 10px;
-    font-family: 'Rajdhani', monospace;
-    font-size: 0.82rem;
+    font-family: var(--font-telemetry);
+    font-size: 0.8rem;
     flex: 1;
     min-height: 220px;
     overflow-y: auto;

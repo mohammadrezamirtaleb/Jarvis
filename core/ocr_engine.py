@@ -11,7 +11,15 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 from PIL import Image
 
-OLLAMA_API_BASE = "http://localhost:11434"
+try:
+    from .memory_vault import vault
+except ImportError:
+    from core.memory_vault import vault
+
+def get_ollama_base_url() -> str:
+    return vault.get_provider_config().get("ollama_base_url", "http://localhost:11434")
+
+OLLAMA_API_BASE = get_ollama_base_url()
 DEFAULT_OCR_MODEL = "glm-ocr:latest"
 FALLBACK_VISION_MODEL = "qwen3.5:4b"
 
@@ -23,16 +31,23 @@ def _prepare_image_base64(image_input: str) -> str:
         image_input = image_input.split(",", 1)[1]
         return image_input
 
-    path = Path(image_input)
-    if path.exists() and path.is_file():
-        with Image.open(path) as img:
-            # Resize if overly large to optimize inference speed
-            if max(img.size) > 2048:
-                img.thumbnail((2048, 2048), Image.Resampling.LANCZOS)
-            buf = io.BytesIO()
-            img_format = "PNG" if img.mode == "RGBA" else "JPEG"
-            img.save(buf, format=img_format, quality=90)
-            return base64.b64encode(buf.getvalue()).decode("utf-8")
+    invalid_path_chars = set('<>"|?*\n\r\t\0')
+    if len(image_input) > 260 or any(c in invalid_path_chars for c in image_input):
+        return image_input
+
+    try:
+        path = Path(image_input)
+        if path.exists() and path.is_file():
+            with Image.open(path) as img:
+                # Resize if overly large to optimize inference speed
+                if max(img.size) > 2048:
+                    img.thumbnail((2048, 2048), Image.Resampling.LANCZOS)
+                buf = io.BytesIO()
+                img_format = "PNG" if img.mode == "RGBA" else "JPEG"
+                img.save(buf, format=img_format, quality=90)
+                return base64.b64encode(buf.getvalue()).decode("utf-8")
+    except OSError:
+        pass
 
     return image_input
 
@@ -86,7 +101,7 @@ def extract_ocr_text(
         }
 
         response = requests.post(
-            f"{OLLAMA_API_BASE}/api/generate",
+            f"{get_ollama_base_url()}/api/generate",
             json=payload,
             timeout=120
         )

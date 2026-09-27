@@ -54,7 +54,8 @@ def get_system_vitals() -> Dict[str, Any]:
         mem_percent = mem.percent
 
         # Disk
-        disk = psutil.disk_usage('/')
+        disk_path = (os.environ.get('SystemDrive', 'C:') + '\\') if os.name == 'nt' else '/'
+        disk = psutil.disk_usage(disk_path)
         disk_total_gb = round(disk.total / (1024 ** 3), 1)
         disk_used_gb = round(disk.used / (1024 ** 3), 1)
         disk_percent = disk.percent
@@ -127,18 +128,31 @@ def get_system_vitals() -> Dict[str, Any]:
 def launch_application(app_query: str) -> Dict[str, Any]:
     """Launch Windows apps or custom commands safely."""
     clean_name = app_query.strip().lower()
-    command = APP_MAP.get(clean_name, clean_name)
 
     try:
-        if command.startswith("start "):
-            subprocess.Popen(command, shell=True)
+        if clean_name in APP_MAP:
+            command = APP_MAP[clean_name]
+            if command.startswith("start "):
+                subprocess.Popen(command, shell=True)
+            else:
+                subprocess.Popen(command, shell=True)
+            return {
+                "success": True,
+                "message": f"Successfully launched {app_query}",
+                "command": command
+            }
         else:
-            subprocess.Popen(command, shell=True)
-        return {
-            "success": True,
-            "message": f"Successfully launched {app_query}",
-            "command": command
-        }
+            if not clean_name.isalnum():
+                return {
+                    "success": False,
+                    "error": f"Application query '{app_query}' rejected: Only registered apps or single alphanumeric tokens are permitted."
+                }
+            subprocess.Popen([clean_name], shell=False)
+            return {
+                "success": True,
+                "message": f"Successfully launched {clean_name}",
+                "command": clean_name
+            }
     except Exception as e:
         return {
             "success": False,
@@ -175,22 +189,23 @@ def _grab_win32_screen() -> Image.Image:
     hbm = gdi32.CreateCompatibleBitmap(hdc_screen, w, h)
     old_bm = gdi32.SelectObject(hdc_mem, hbm)
 
-    gdi32.BitBlt(hdc_mem, 0, 0, w, h, hdc_screen, 0, 0, 0x00CC0020)
+    try:
+        gdi32.BitBlt(hdc_mem, 0, 0, w, h, hdc_screen, 0, 0, 0x00CC0020)
 
-    bmi = bytearray(40)
-    bmi[0:4] = (40).to_bytes(4, 'little')
-    bmi[4:8] = w.to_bytes(4, 'little', signed=True)
-    bmi[8:12] = (-h).to_bytes(4, 'little', signed=True)
-    bmi[12:14] = (1).to_bytes(2, 'little')
-    bmi[14:16] = (32).to_bytes(2, 'little')
+        bmi = bytearray(40)
+        bmi[0:4] = (40).to_bytes(4, 'little')
+        bmi[4:8] = w.to_bytes(4, 'little', signed=True)
+        bmi[8:12] = (-h).to_bytes(4, 'little', signed=True)
+        bmi[12:14] = (1).to_bytes(2, 'little')
+        bmi[14:16] = (32).to_bytes(2, 'little')
 
-    buf = ctypes.create_string_buffer(w * h * 4)
-    gdi32.GetDIBits(hdc_mem, hbm, 0, h, buf, bytes(bmi), 0)
-
-    gdi32.SelectObject(hdc_mem, old_bm)
-    gdi32.DeleteObject(hbm)
-    gdi32.DeleteDC(hdc_mem)
-    user32.ReleaseDC(0, hdc_screen)
+        buf = ctypes.create_string_buffer(w * h * 4)
+        gdi32.GetDIBits(hdc_mem, hbm, 0, h, buf, bytes(bmi), 0)
+    finally:
+        gdi32.SelectObject(hdc_mem, old_bm)
+        gdi32.DeleteObject(hbm)
+        gdi32.DeleteDC(hdc_mem)
+        user32.ReleaseDC(0, hdc_screen)
 
     return Image.frombuffer('RGBA', (w, h), buf, 'raw', 'BGRA', 0, 1).convert('RGB')
 
@@ -212,6 +227,21 @@ def capture_desktop_screenshot() -> Dict[str, Any]:
         filepath = SCREENSHOTS_DIR / filename
         img.save(filepath, format="PNG")
 
+        # Purge older screenshots keeping only the most recent 20 files
+        try:
+            screenshot_files = sorted(
+                [f for f in SCREENSHOTS_DIR.glob("*.png") if f.is_file()],
+                key=lambda p: p.stat().st_mtime,
+                reverse=True
+            )
+            for old_file in screenshot_files[20:]:
+                try:
+                    old_file.unlink()
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
         # Create base64 preview
         buf = io.BytesIO()
         img.thumbnail((1280, 720))
@@ -231,6 +261,10 @@ def capture_desktop_screenshot() -> Dict[str, Any]:
 
 def execute_shell_command(command: str, timeout: int = 10) -> Dict[str, Any]:
     """Execute a safe shell command and return stdout/stderr."""
+    chaining_chars = ["&", "|", ";", ">", "<", "`"]
+    if any(char in command for char in chaining_chars):
+        return {"success": False, "error": "Directive rejected: Command chaining or redirection characters are prohibited."}
+
     from core.security import validate_command
     
     if not validate_command(command):
@@ -269,11 +303,16 @@ def search_local_files(query: str, root_dir: str = ".") -> Dict[str, Any]:
 
         for p in base.rglob(f"*{query}*"):
             if not any(part.startswith((".", "node_modules", "__pycache__", "venv")) for part in p.parts):
+                try:
+                    is_dir = p.is_dir()
+                    size_bytes = p.stat().st_size if p.is_file() else 0
+                except (PermissionError, FileNotFoundError, OSError):
+                    continue
                 matches.append({
                     "path": str(p),
                     "name": p.name,
-                    "is_dir": p.is_dir(),
-                    "size_bytes": p.stat().st_size if p.is_file() else 0
+                    "is_dir": is_dir,
+                    "size_bytes": size_bytes
                 })
                 if len(matches) >= 25:
                     break
