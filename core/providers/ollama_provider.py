@@ -12,22 +12,29 @@ from .base import LLMProvider
 
 
 OLLAMA_CLOUD_REGISTRY_MODELS: List[Dict[str, Any]] = [
-    # Reasoning & Thinking Models
-    {"id": "deepseek-r1:70b", "name": "DeepSeek R1 (70B) — Cloud Registry", "badge": "CLOUD // REASONING", "is_cloud": True},
-    {"id": "deepseek-r1:32b", "name": "DeepSeek R1 (32B) — Cloud Registry", "badge": "CLOUD // REASONING", "is_cloud": True},
-    {"id": "deepseek-r1:14b", "name": "DeepSeek R1 (14B) — Cloud Registry", "badge": "CLOUD // REASONING", "is_cloud": True},
-    {"id": "deepseek-r1:8b", "name": "DeepSeek R1 (8B) — Cloud Registry", "badge": "CLOUD // REASONING", "is_cloud": True},
+    # Ollama Cloud Models
+    {"id": "gpt-oss:120b-cloud", "name": "GPT-OSS 120B (OpenAI / Ollama Cloud)", "badge": "OLLAMA CLOUD // REASONING", "is_cloud": True},
+    {"id": "gpt-oss:latest-cloud", "name": "GPT-OSS Latest (Ollama Cloud)", "badge": "OLLAMA CLOUD // REASONING", "is_cloud": True},
+    {"id": "deepseek-r1:671b-cloud", "name": "DeepSeek R1 (671B Full Cloud)", "badge": "OLLAMA CLOUD // REASONING", "is_cloud": True},
+    {"id": "deepseek-r1:70b-cloud", "name": "DeepSeek R1 (70B Cloud)", "badge": "OLLAMA CLOUD // REASONING", "is_cloud": True},
+    {"id": "llama3.3:70b-cloud", "name": "Meta Llama 3.3 (70B Cloud)", "badge": "OLLAMA CLOUD // FRONTIER", "is_cloud": True},
+    {"id": "qwen2.5:72b-cloud", "name": "Qwen 2.5 (72B Cloud)", "badge": "OLLAMA CLOUD // FRONTIER", "is_cloud": True},
+    # Reasoning & Thinking Models (Registry)
+    {"id": "deepseek-r1:70b", "name": "DeepSeek R1 (70B) — Registry", "badge": "CLOUD // REASONING", "is_cloud": True},
+    {"id": "deepseek-r1:32b", "name": "DeepSeek R1 (32B) — Registry", "badge": "CLOUD // REASONING", "is_cloud": True},
+    {"id": "deepseek-r1:14b", "name": "DeepSeek R1 (14B) — Registry", "badge": "CLOUD // REASONING", "is_cloud": True},
+    {"id": "deepseek-r1:8b", "name": "DeepSeek R1 (8B) — Registry", "badge": "CLOUD // REASONING", "is_cloud": True},
     {"id": "deepseek-r1:1.5b", "name": "DeepSeek R1 (1.5B) — Fast Reasoning", "badge": "CLOUD // REASONING", "is_cloud": True},
     # Frontier General & Coding Models
-    {"id": "llama3.3:70b", "name": "Meta Llama 3.3 (70B) — Cloud", "badge": "CLOUD // FRONTIER", "is_cloud": True},
+    {"id": "llama3.3:70b", "name": "Meta Llama 3.3 (70B) — Registry", "badge": "CLOUD // FRONTIER", "is_cloud": True},
     {"id": "llama3.2:3b", "name": "Meta Llama 3.2 (3B) — Lightweight", "badge": "CLOUD // FAST", "is_cloud": True},
-    {"id": "llama3.2-vision:11b", "name": "Llama 3.2 Vision (11B) — Multimodal", "badge": "CLOUD // MULTIMODAL", "is_cloud": True},
-    {"id": "qwen2.5:72b", "name": "Qwen 2.5 (72B) — Cloud", "badge": "CLOUD // FRONTIER", "is_cloud": True},
-    {"id": "qwen2.5-coder:32b", "name": "Qwen 2.5 Coder (32B) — Cloud", "badge": "CLOUD // CODE", "is_cloud": True},
-    {"id": "mistral-large:123b", "name": "Mistral Large 2 (123B) — Cloud", "badge": "CLOUD // FRONTIER", "is_cloud": True},
-    {"id": "command-r-plus:104b", "name": "Cohere Command R+ (104B) — Cloud", "badge": "CLOUD // ENTERPRISE", "is_cloud": True},
-    {"id": "phi4:14b", "name": "Microsoft Phi-4 (14B) — Cloud", "badge": "CLOUD // REASONING", "is_cloud": True},
-    {"id": "gemma2:27b", "name": "Google Gemma 2 (27B) — Cloud", "badge": "CLOUD // FRONTIER", "is_cloud": True},
+    {"id": "llama3.2-vision:11b", "name": "Llama 3.2 Vision (11B) — Multimodal", "badge": "LOCAL // VISION", "is_cloud": True},
+    {"id": "qwen2.5:72b", "name": "Qwen 2.5 (72B) — Registry", "badge": "CLOUD // FRONTIER", "is_cloud": True},
+    {"id": "qwen2.5-coder:32b", "name": "Qwen 2.5 Coder (32B) — Registry", "badge": "CLOUD // CODE", "is_cloud": True},
+    {"id": "mistral-large:123b", "name": "Mistral Large 2 (123B) — Registry", "badge": "CLOUD // FRONTIER", "is_cloud": True},
+    {"id": "command-r-plus:104b", "name": "Cohere Command R+ (104B) — Registry", "badge": "CLOUD // ENTERPRISE", "is_cloud": True},
+    {"id": "phi4:14b", "name": "Microsoft Phi-4 (14B) — Registry", "badge": "CLOUD // REASONING", "is_cloud": True},
+    {"id": "gemma2:27b", "name": "Google Gemma 2 (27B) — Registry", "badge": "CLOUD // FRONTIER", "is_cloud": True},
     # Hugging Face Hub Direct GGUF Models
     {"id": "hf.co/bartowski/DeepSeek-R1-Distill-Qwen-14B-GGUF", "name": "HF: DeepSeek-R1-Distill-Qwen-14B (GGUF)", "badge": "HUGGINGFACE // GGUF", "is_cloud": True},
     {"id": "hf.co/bartowski/Llama-3.2-3B-Instruct-GGUF", "name": "HF: Llama-3.2-3B-Instruct (GGUF)", "badge": "HUGGINGFACE // GGUF", "is_cloud": True},
@@ -269,20 +276,40 @@ class OllamaProvider(LLMProvider):
                         installed_ids.add(raw_name.split(":")[0])
 
                         size_bytes = m.get("size") or 0
-                        size_gb = round(size_bytes / (1024 ** 3), 1)
                         details = m.get("details") or {}
+                        capabilities = m.get("capabilities") or []
                         param_size = details.get("parameter_size", "")
                         quant = details.get("quantization_level", "")
+                        is_remote_cloud = bool(m.get("remote_host") or m.get("remote_model") or "-cloud" in raw_name or (0 < size_bytes < 50000))
 
-                        # Classify model source
-                        if "hf.co/" in raw_name:
+                        # Classify model source and capabilities
+                        if is_remote_cloud:
+                            if "thinking" in capabilities or "reasoning" in raw_name.lower() or "gpt-oss" in raw_name.lower():
+                                badge = "OLLAMA CLOUD // REASONING"
+                            else:
+                                badge = "OLLAMA CLOUD"
+                            meta_str = f"({param_size} {quant} • OLLAMA CLOUD)" if (param_size or quant) else "(OLLAMA CLOUD)"
+                        elif "hf.co/" in raw_name:
+                            size_gb = round(size_bytes / (1024 ** 3), 1)
                             badge = "HUGGINGFACE // GGUF"
+                            meta_str = f"({param_size} {quant} • {size_gb}GB)" if (param_size or quant) else f"({size_gb}GB)"
                         elif "registry." in raw_name or "/" in raw_name:
+                            size_gb = round(size_bytes / (1024 ** 3), 1)
                             badge = "CLOUD // REGISTRY"
+                            meta_str = f"({param_size} {quant} • {size_gb}GB)" if (param_size or quant) else f"({size_gb}GB)"
+                        elif "vision" in capabilities or "-vl" in raw_name:
+                            size_gb = round(size_bytes / (1024 ** 3), 1)
+                            badge = "LOCAL // VISION"
+                            meta_str = f"({param_size} {quant} • {size_gb}GB)" if (param_size or quant) else f"({size_gb}GB)"
+                        elif "embedding" in capabilities or "embed" in raw_name:
+                            size_gb = round(size_bytes / (1024 ** 3), 1)
+                            badge = "EMBEDDING"
+                            meta_str = f"({param_size} {quant} • {size_gb}GB)" if (param_size or quant) else f"({size_gb}GB)"
                         else:
+                            size_gb = round(size_bytes / (1024 ** 3), 1)
                             badge = "LOCAL // INSTALLED"
+                            meta_str = f"({param_size} {quant} • {size_gb}GB)" if (param_size or quant) else f"({size_gb}GB)"
 
-                        meta_str = f"({param_size} {quant} • {size_gb}GB)" if (param_size or quant) else f"({size_gb}GB)"
                         display_name = f"{raw_name} {meta_str}"
 
                         installed_models.append({
@@ -290,7 +317,8 @@ class OllamaProvider(LLMProvider):
                             "name": display_name,
                             "provider": self.id,
                             "badge": badge,
-                            "is_installed": True
+                            "is_installed": True,
+                            "is_cloud": is_remote_cloud
                         })
         except Exception:
             pass
