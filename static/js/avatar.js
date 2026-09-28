@@ -53,8 +53,8 @@ class AvatarEngine {
         this.lastBlinkTime = 0;
         this.isBlinking = false;
 
-        // Particle Data Arrays (38,000 for high-density holographic realism)
-        this.particleCount = 38000;
+        // Particle Data Arrays (50,000 for high-density holographic realism)
+        this.particleCount = 50000;
         this.basePositions = new Float32Array(this.particleCount * 3);
         this.targetPositions = new Float32Array(this.particleCount * 3);
         this.currentPositions = new Float32Array(this.particleCount * 3);
@@ -187,8 +187,12 @@ class AvatarEngine {
         const rawPositions = headGeometry.attributes.position.array;
         const scale = 5.8;
         const yOffset = 28;
+        
+        // Dynamically downsample head to ~12k vertices so we don't overflow the particle array
+        const vertexCount = rawPositions.length / 3;
+        const step = Math.max(1, Math.floor(vertexCount / 12000));
 
-        for (let i = 0; i < rawPositions.length; i += 3) {
+        for (let i = 0; i < rawPositions.length; i += (3 * step)) {
             let hx = rawPositions[i] * scale;
             let hy = rawPositions[i + 1] * scale + yOffset;
             let hz = rawPositions[i + 2] * scale;
