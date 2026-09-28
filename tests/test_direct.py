@@ -74,6 +74,14 @@ async def run_direct_tests():
     assert diag_res["success"] is True
     print(f"[PASS] 6. Stark Diagnostics Protocol: Success.")
 
+    # 7. Ollama Local & Cloud Model Matrix Detection
+    ollama_models = await provider_registry.get_models("ollama")
+    assert len(ollama_models) >= 10, f"Expected >=10 Ollama models, got {len(ollama_models)}"
+    cloud_model_ids = [m["id"] for m in ollama_models if m.get("is_cloud")]
+    assert "deepseek-r1:70b" in cloud_model_ids, "DeepSeek R1 70B Cloud model not found"
+    assert any("hf.co/" in mid for mid in cloud_model_ids), "HuggingFace GGUF models not found"
+    print(f"[PASS] 7. Ollama Cloud & Registry Engine: Detected {len(ollama_models)} models ({len(cloud_model_ids)} Cloud/HF Registry models).")
+
     print("\n==================================================================")
     print("   ALL DIRECT TESTS PASSED // MARK-86 ENGINE 100% OPERATIONAL!")
     print("==================================================================")

@@ -48,7 +48,7 @@ DEFAULT_PROVIDER_CONFIG = {
 
     # Google Gemini
     "google_api_key": "",
-    "google_model": "gemini-2.5-flash",
+    "google_model": "gemini-2.0-flash",
     "google_base_url": "https://generativelanguage.googleapis.com/v1beta",
 
     # Grok (xAI)
@@ -66,7 +66,8 @@ DEFAULT_PROVIDER_CONFIG = {
     "custom_model": "custom-model",
     "custom_base_url": "http://localhost:1234/v1",
 
-    # Ollama Local
+    # Ollama Local & Cloud
+    "ollama_api_key": "",
     "ollama_model": "qwen3.5:4b",
     "ollama_base_url": "http://localhost:11434",
 
@@ -78,7 +79,7 @@ DEFAULT_PROVIDER_CONFIG = {
     # Hugging Face
     "huggingface_api_key": "",
     "huggingface_model": "Qwen/Qwen2.5-72B-Instruct",
-    "huggingface_base_url": "https://router.huggingface.co/hf-inference/v1",
+    "huggingface_base_url": "https://router.huggingface.co/v1",
 }
 
 DEFAULT_VAULT = {

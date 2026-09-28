@@ -217,6 +217,26 @@ async def get_provider_models(provider_id: str):
     return {"provider": provider_id, "models": models}
 
 
+@app.post("/api/providers/save")
+async def save_provider_config(req: Request):
+    """Save configuration for a specific provider and update active provider."""
+    data = await req.json()
+    prov = data.get("provider")
+    update_dict = {}
+    if prov:
+        if "model" in data and data["model"]:
+            update_dict[f"{prov}_model"] = data["model"]
+        if "api_key" in data and data["api_key"] is not None:
+            update_dict[f"{prov}_api_key"] = data["api_key"]
+        if "base_url" in data and data["base_url"]:
+            update_dict[f"{prov}_base_url"] = data["base_url"]
+        update_dict["active_provider"] = prov
+    else:
+        update_dict = data
+    vault.update_provider_config(update_dict)
+    return {"success": True, "config": vault.get_provider_config()}
+
+
 @app.post("/api/config/provider")
 async def update_provider_config(req: Request):
     data = await req.json()

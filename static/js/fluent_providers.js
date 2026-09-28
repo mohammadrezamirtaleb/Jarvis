@@ -221,11 +221,11 @@ class FluentDesktopHub {
         
         <div class="provider-card-desc">${p.description}</div>
 
-        ${p.requires_key ? `
+        ${(p.requires_key || p.id === 'ollama') ? `
           <div class="provider-input-group">
-            <label class="provider-input-label">API KEY / ACCESS TOKEN</label>
+            <label class="provider-input-label">${p.id === 'ollama' ? 'API KEY / CLOUD AUTH TOKEN (OPTIONAL)' : 'API KEY / ACCESS TOKEN'}</label>
             <div class="provider-input-row">
-              <input type="password" id="key-${p.id}" class="fluent-input" placeholder="${p.has_key ? p.masked_key : 'Enter ' + p.name + ' API Key...'}" value="">
+              <input type="password" id="key-${p.id}" class="fluent-input" placeholder="${p.has_key ? p.masked_key : (p.id === 'ollama' ? 'Optional (for Authenticated Cloud / Remote Host)' : 'Enter ' + p.name + ' API Key...')}" value="">
               <button type="button" class="fluent-btn" onclick="FluentDesktopHub.togglePasswordVis('key-${p.id}')">
                 ${getFluentSvg('visibility', { size: '14px' })}
               </button>
@@ -234,14 +234,23 @@ class FluentDesktopHub {
         ` : ''}
 
         <div class="provider-input-group">
-          <label class="provider-input-label">TARGET MODEL IDENTIFIER</label>
-          <input type="text" id="model-${p.id}" class="fluent-input" value="${p.configured_model || p.default_model}" placeholder="${p.default_model}">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <label class="provider-input-label" style="margin-bottom:0;">TARGET MODEL IDENTIFIER</label>
+            <button type="button" class="fluent-btn" onclick="fluentHub.loadModelsForProvider('${p.id}')" title="Scan local & cloud models" style="padding:2px 8px; font-size:10px; height:auto; min-height:0; background:rgba(0,240,255,0.08); border:1px solid rgba(0,240,255,0.2); color:#00f0ff; border-radius:4px; cursor:pointer;">
+              ${getFluentSvg('search', { size: '11px' })} DISCOVER
+            </button>
+          </div>
+          <div class="provider-input-row">
+            <input type="text" id="model-${p.id}" list="models-list-${p.id}" class="fluent-input" value="${this.escapeHtml(p.configured_model || p.default_model)}" placeholder="${this.escapeHtml(p.default_model)}">
+            <datalist id="models-list-${p.id}"></datalist>
+          </div>
+          <div id="models-status-${p.id}" style="font-size:11px; color:#888; margin-top:3px; display:none;"></div>
         </div>
 
         ${(p.id === 'custom' || p.id === 'vllm' || p.id === 'ollama' || p.id === 'huggingface') ? `
           <div class="provider-input-group">
             <label class="provider-input-label">API BASE URL / ENDPOINT</label>
-            <input type="text" id="baseurl-${p.id}" class="fluent-input" value="${p.configured_base_url || p.default_base_url}">
+            <input type="text" id="baseurl-${p.id}" class="fluent-input" value="${this.escapeHtml(p.configured_base_url || p.default_base_url)}">
           </div>
         ` : ''}
 
@@ -263,6 +272,39 @@ class FluentDesktopHub {
 
       grid.appendChild(card);
     });
+  }
+
+  async loadModelsForProvider(providerId) {
+    const statusEl = document.getElementById(`models-status-${providerId}`);
+    const datalist = document.getElementById(`models-list-${providerId}`);
+    if (statusEl) {
+      statusEl.style.display = 'block';
+      statusEl.innerHTML = `<span style="color:#00f0ff;">Scanning for local & cloud models...</span>`;
+    }
+    try {
+      const res = await fetch(`/api/providers/${providerId}/models`);
+      if (!res.ok) throw new Error(`Status ${res.status}`);
+      const data = await res.json();
+      const models = data.models || [];
+      if (datalist) {
+        datalist.innerHTML = '';
+        models.forEach(m => {
+          const opt = document.createElement('option');
+          opt.value = m.id;
+          opt.label = `${m.name} [${m.badge}]`;
+          datalist.appendChild(opt);
+        });
+      }
+      if (statusEl) {
+        const localCount = models.filter(m => m.is_installed || (m.badge && m.badge.includes('LOCAL'))).length;
+        const cloudCount = models.length - localCount;
+        statusEl.innerHTML = `<span style="color:#00ffaa;">✓ Discovered ${models.length} models (${localCount} local, ${cloudCount} cloud/registry). Type or pick from dropdown.</span>`;
+      }
+    } catch (e) {
+      if (statusEl) {
+        statusEl.innerHTML = `<span style="color:#ff3366;">⚠️ Discovery error: ${e.message}</span>`;
+      }
+    }
   }
 
   static togglePasswordVis(inputId) {
@@ -294,7 +336,7 @@ class FluentDesktopHub {
     const baseurlInput = document.getElementById(`baseurl-${providerId}`);
 
     const payload = {
-      provider: providerId,
+      provider_id: providerId,
       model: modelInput ? modelInput.value.trim() : null,
       api_key: keyInput && keyInput.value.trim() ? keyInput.value.trim() : undefined,
       base_url: baseurlInput ? baseurlInput.value.trim() : undefined
@@ -310,7 +352,7 @@ class FluentDesktopHub {
       const data = await res.json();
 
       if (badge) {
-        if (data.status === 'ok') {
+        if (data.status === 'ok' || data.success) {
           badge.innerHTML = `<span class="badge-dot" style="background:#00ffaa;"></span> <span>${data.latency_ms}ms OK</span>`;
           badge.className = 'ping-latency-badge';
         } else {
