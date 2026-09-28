@@ -2,7 +2,7 @@ import asyncio
 import os
 from core.tts_engine import generate_tts, download_piper_model
 
-async def test():
+async def run_tts_manual_test():
     print("Testing Piper Model Download...")
     await download_piper_model("en_US-lessac-medium")
     await download_piper_model("fa_IR-amir-medium")
@@ -19,4 +19,4 @@ async def test():
     print("All tests passed.")
 
 if __name__ == "__main__":
-    asyncio.run(test())
+    asyncio.run(run_tts_manual_test())
