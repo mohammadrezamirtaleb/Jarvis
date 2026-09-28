@@ -29,6 +29,7 @@ class AvatarEngine {
         this.renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: 'high-performance' });
         this.renderer.setSize(width, height);
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+        this.renderer.domElement.style.display = 'block';
         this.container.appendChild(this.renderer.domElement);
 
         // Core system state
@@ -445,7 +446,8 @@ class AvatarEngine {
         geometry.setAttribute('color', new THREE.BufferAttribute(this.colors, 3));
 
         const material = new THREE.PointsMaterial({
-            size: 2.2,
+            size: 3.0,
+            sizeAttenuation: false,
             map: this.glowTexture,
             vertexColors: true,
             transparent: true,
@@ -532,7 +534,7 @@ class AvatarEngine {
     }
 
     animate() {
-        if (!this.isVisible || !this.container || this.container.style.display === 'none' || this.container.style.opacity === '0') {
+        if (!this.isVisible || !this.container) {
             this.animFrameId = null;
             return;
         }
