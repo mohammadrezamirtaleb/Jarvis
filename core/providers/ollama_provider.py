@@ -5,9 +5,10 @@ and automatic on-demand cloud model pulling with live progress & reasoning strea
 """
 
 import json
+import time
 import subprocess
 import httpx
-from typing import AsyncGenerator, Dict, Any, List, Optional
+from typing import AsyncGenerator, Dict, Any, List, Optional, Tuple
 from .base import LLMProvider
 
 
@@ -347,3 +348,34 @@ class OllamaProvider(LLMProvider):
                 })
 
         return installed_models + cloud_models
+
+    async def test_connection(
+        self,
+        api_key: Optional[str] = None,
+        base_url: Optional[str] = None,
+        model: Optional[str] = None
+    ) -> Tuple[bool, str, float]:
+        """Fast connectivity check for Ollama local daemon or Ollama Cloud endpoint."""
+        start = time.perf_counter()
+        target_url = (base_url or self.default_base_url).rstrip("/")
+        headers = self._build_headers(api_key)
+        try:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(4.0)) as client:
+                resp = await client.get(f"{target_url}/api/version", headers=headers)
+                if resp.status_code == 200:
+                    ver = resp.json().get("version", "ready")
+                    latency_ms = round((time.perf_counter() - start) * 1000, 1)
+                    target_model = model or self.default_model
+                    is_cloud = "-cloud" in target_model or "gpt-oss" in target_model
+                    label = f"Ollama Cloud v{ver} OK ({latency_ms}ms)" if is_cloud else f"Ollama v{ver} OK ({latency_ms}ms)"
+                    return True, label, latency_ms
+                elif resp.status_code in (401, 403):
+                    latency_ms = round((time.perf_counter() - start) * 1000, 1)
+                    return False, f"Auth Required ({resp.status_code})", latency_ms
+                else:
+                    return await super().test_connection(api_key=api_key, base_url=base_url, model=model)
+        except Exception as e:
+            latency_ms = round((time.perf_counter() - start) * 1000, 1)
+            is_local = ("localhost" in target_url or "127.0.0.1" in target_url or "::1" in target_url)
+            err_msg = "Daemon Offline (Click Activate to start)" if is_local else f"Cloud Endpoint Offline"
+            return False, err_msg, latency_ms

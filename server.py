@@ -91,7 +91,8 @@ class ChatRequest(BaseModel):
 
 
 class ProviderTestRequest(BaseModel):
-    provider_id: str
+    provider_id: Optional[str] = None
+    provider: Optional[str] = None
     api_key: Optional[str] = None
     base_url: Optional[str] = None
     model: Optional[str] = None
@@ -188,22 +189,24 @@ def list_providers():
 @app.post("/api/providers/test")
 async def test_provider_connection(req: ProviderTestRequest):
     """Test latency and handshake for any provider."""
+    pid = (req.provider_id or req.provider or "openrouter").lower()
     prov_cfg = vault.get_provider_config()
-    target_key = req.api_key or prov_cfg.get(f"{req.provider_id}_api_key")
-    target_base_url = req.base_url or prov_cfg.get(f"{req.provider_id}_base_url")
-    target_model = req.model or prov_cfg.get(f"{req.provider_id}_model")
+    target_key = req.api_key if req.api_key is not None else prov_cfg.get(f"{pid}_api_key")
+    target_base_url = req.base_url or prov_cfg.get(f"{pid}_base_url")
+    target_model = req.model or prov_cfg.get(f"{pid}_model")
 
     success, message, latency_ms = await provider_registry.test_connection(
-        provider_id=req.provider_id,
+        provider_id=pid,
         api_key=target_key,
         base_url=target_base_url,
         model=target_model
     )
     return {
         "success": success,
+        "status": "ok" if success else "error",
         "message": message,
         "latency_ms": latency_ms,
-        "provider": req.provider_id
+        "provider": pid
     }
 
 

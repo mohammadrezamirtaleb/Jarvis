@@ -81,7 +81,7 @@ class LLMProvider(ABC):
                 max_tokens=5,
                 temperature=0.1
             ):
-                if chunk.get("type") == "token":
+                if chunk.get("type") in ("token", "thinking"):
                     first_token_received = True
                 elif chunk.get("type") == "done":
                     success = True
