@@ -241,7 +241,7 @@ class FluentDesktopHub {
             </button>
           </div>
           <div class="provider-input-row">
-            <input type="text" id="model-${p.id}" list="models-list-${p.id}" class="fluent-input" value="${this.escapeHtml(p.configured_model || p.default_model)}" placeholder="${this.escapeHtml(p.default_model)}">
+            <input type="text" id="model-${p.id}" list="models-list-${p.id}" class="fluent-input" value="${this.escapeHtml(p.configured_model || p.default_model)}" placeholder="${this.escapeHtml(p.default_model)}" oninput="fluentHub.onModelInputChange('${p.id}', this.value)" onchange="fluentHub.onModelInputChange('${p.id}', this.value)">
             <datalist id="models-list-${p.id}"></datalist>
           </div>
           <div id="models-status-${p.id}" style="font-size:11px; color:#888; margin-top:3px; display:none;"></div>
@@ -368,14 +368,42 @@ class FluentDesktopHub {
     }
   }
 
+  async onModelInputChange(providerId, value) {
+    const cleanModel = (value || '').trim();
+    if (!cleanModel) return;
+    const p = this.providers.find(item => item.id === providerId);
+    if (p) {
+      p.configured_model = cleanModel;
+    }
+    if (this.activeProvider.toLowerCase() === providerId.toLowerCase()) {
+      if (window.jarvisApp) {
+        window.jarvisApp.activeModel = cleanModel;
+      }
+      this.updateHeaderQuickSwitcher();
+    }
+    try {
+      await fetch('/api/providers/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: providerId,
+          model: cleanModel
+        })
+      });
+    } catch (e) {
+      console.error('Failed to auto-save model change:', e);
+    }
+  }
+
   async saveAndActivate(providerId) {
     const keyInput = document.getElementById(`key-${providerId}`);
     const modelInput = document.getElementById(`model-${providerId}`);
     const baseurlInput = document.getElementById(`baseurl-${providerId}`);
 
+    const selectedModel = modelInput ? modelInput.value.trim() : undefined;
     const payload = {
       provider: providerId,
-      model: modelInput ? modelInput.value.trim() : undefined,
+      model: selectedModel,
       api_key: keyInput && keyInput.value.trim() ? keyInput.value.trim() : undefined,
       base_url: baseurlInput ? baseurlInput.value.trim() : undefined
     };
@@ -387,29 +415,35 @@ class FluentDesktopHub {
         body: JSON.stringify(payload)
       });
       if (!res.ok) throw new Error(`Provider save failed: ${res.status}`);
-      await this.setActiveProvider(providerId);
+      await this.setActiveProvider(providerId, selectedModel);
       if (window.jarvisAudio) window.jarvisAudio.playClick();
     } catch (e) {
       console.error(e);
     }
   }
 
-  async setActiveProvider(providerId) {
+  async setActiveProvider(providerId, explicitModel) {
     try {
+      const payload = { active_provider: providerId };
+      if (explicitModel) {
+        payload[`${providerId}_model`] = explicitModel;
+      }
       const res = await fetch('/api/config/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ active_provider: providerId })
+        body: JSON.stringify(payload)
       });
       if (!res.ok) throw new Error(`Config update failed: ${res.status}`);
       this.activeProvider = providerId;
       await this.fetchProviders();
       const activeObj = this.providers.find(p => p.id === providerId);
+      const activeModelName = explicitModel || (activeObj ? (activeObj.configured_model || activeObj.default_model) : null);
       if (window.jarvisApp) {
         window.jarvisApp.activeProvider = providerId;
-        window.jarvisApp.activeModel = activeObj ? (activeObj.configured_model || activeObj.default_model) : null;
+        window.jarvisApp.activeModel = activeModelName;
         if (window.jarvisApp.updateProviderHUD) window.jarvisApp.updateProviderHUD();
       }
+      this.updateHeaderQuickSwitcher();
       if (window.jarvisAudio) window.jarvisAudio.playClick();
     } catch (e) {
       console.error(e);
