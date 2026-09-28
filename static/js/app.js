@@ -804,10 +804,14 @@ class JarvisApp {
         msgBody.innerHTML = this.renderMarkdown(cleanDisplayText || fullResponse);
 
         // Detect Avatar Trigger
-        if (fullResponse.includes('[[ACTION:show_avatar]]')) {
+        const hasShowAvatar = fullResponse.includes('[[ACTION:show_avatar]]') || 
+            (actions && actions.some(a => a.action === 'show_avatar'));
+        const hasHideAvatar = fullResponse.includes('[[ACTION:hide_avatar]]') || 
+            (actions && actions.some(a => a.action === 'hide_avatar'));
+
+        if (hasShowAvatar) {
             if (window.showHolographicAvatar) window.showHolographicAvatar();
-        }
-        if (fullResponse.includes('[[ACTION:hide_avatar]]')) {
+        } else if (hasHideAvatar) {
             if (window.hideHolographicAvatar) window.hideHolographicAvatar();
         }
 
@@ -829,9 +833,18 @@ class JarvisApp {
                 let icon = 'bolt';
                 let label = act.action;
                 
-                // Add to feedback
-                shouldTriggerLoop = true;
-                actionResultsStr += `Action: ${act.action} | Result: ${JSON.stringify(act.result || act.error || 'Done')}\n`;
+                if (act.action === 'show_avatar') {
+                    icon = 'face';
+                    label = 'HOLOGRAPHIC AVATAR ENGAGED';
+                    if (window.showHolographicAvatar) window.showHolographicAvatar();
+                } else if (act.action === 'hide_avatar') {
+                    icon = 'visibility_off';
+                    label = 'AVATAR MINIMIZED';
+                    if (window.hideHolographicAvatar) window.hideHolographicAvatar();
+                } else {
+                    shouldTriggerLoop = true;
+                    actionResultsStr += `Action: ${act.action} | Result: ${JSON.stringify(act.result || act.error || 'Done')}\n`;
+                }
 
                 if (act.action === 'open_app') {
                     icon = 'rocket_launch';

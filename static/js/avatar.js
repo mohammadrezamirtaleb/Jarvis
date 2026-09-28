@@ -20,13 +20,13 @@ class AvatarEngine {
         this.cyanAuraLight.position.set(0, -20, 80);
         this.scene.add(this.cyanAuraLight);
 
-        const width = this.container.clientWidth || window.innerWidth;
-        const height = this.container.clientHeight || window.innerHeight;
-        this.camera = new THREE.PerspectiveCamera(45, (this.container.clientWidth || width) / (this.container.clientHeight || height), 1, 3000);
-        this.camera.position.set(0, 0, 240);
+        const width = 340;
+        const height = 340;
+        this.camera = new THREE.PerspectiveCamera(45, width / height, 1, 3000);
+        this.camera.position.set(0, 5, 230);
 
         this.renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-        this.renderer.setSize(this.container.clientWidth || width, this.container.clientHeight || height);
+        this.renderer.setSize(width, height);
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         this.container.appendChild(this.renderer.domElement);
 
@@ -57,71 +57,17 @@ class AvatarEngine {
         this.colors = new Float32Array(this.particleCount * 3);
         this.particleTypes = new Uint8Array(this.particleCount); // 0: Contour Scanline, 1: Face/Lip, 2: Veins/Neural, 3: Core, 4: Dust
 
-        this.buildUIOverlay();
         this.loadHumanBustModel();
         this.bindEvents();
-        this.animate();
 
         // Initial hidden state
         this.container.style.opacity = '0';
         this.container.style.pointerEvents = 'none';
-        this.container.style.transition = 'opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1)';
-        this.container.style.background = 'radial-gradient(circle at center 40%, rgba(4, 18, 42, 0.88) 0%, rgba(1, 6, 16, 0.97) 85%)';
-        this.container.style.backdropFilter = 'blur(16px)';
-        this.container.style.webkitBackdropFilter = 'blur(16px)';
+        this.container.style.transition = 'opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1)';
     }
 
     buildUIOverlay() {
-        const header = document.createElement('div');
-        header.style.position = 'absolute';
-        header.style.top = '25px';
-        header.style.left = '35px';
-        header.style.zIndex = '9002';
-        header.style.fontFamily = 'var(--font-telemetry, monospace)';
-        header.style.pointerEvents = 'none';
-        header.innerHTML = `
-            <div style="display:flex; align-items:center; gap:10px;">
-                <div style="width:10px; height:10px; border-radius:50%; background:#00f0ff; box-shadow:0 0 12px #00f0ff; animation:blinkDot 1.2s infinite alternate;"></div>
-                <span style="color:#00f0ff; font-weight:700; letter-spacing:2px; font-size:0.95rem;">J.A.R.V.I.S. // NEURAL AVATAR LINK</span>
-            </div>
-            <div style="color:rgba(0,240,255,0.6); font-size:0.75rem; letter-spacing:1px; margin-top:3px;">
-                SYNAPSE MATRIX: ACTIVE | VASCULAR CORE: SYNCED
-            </div>
-        `;
-        this.container.appendChild(header);
-
-        this.closeBtn = document.createElement('button');
-        this.closeBtn.innerHTML = '⛌ CLOSE AVATAR';
-        this.closeBtn.style.position = 'absolute';
-        this.closeBtn.style.top = '25px';
-        this.closeBtn.style.right = '35px';
-        this.closeBtn.style.background = 'rgba(255, 42, 85, 0.15)';
-        this.closeBtn.style.border = '1px solid rgba(255, 42, 85, 0.6)';
-        this.closeBtn.style.color = '#ff2a55';
-        this.closeBtn.style.padding = '8px 18px';
-        this.closeBtn.style.fontFamily = 'var(--font-telemetry, monospace)';
-        this.closeBtn.style.fontSize = '0.85rem';
-        this.closeBtn.style.fontWeight = '600';
-        this.closeBtn.style.letterSpacing = '1.5px';
-        this.closeBtn.style.borderRadius = '4px';
-        this.closeBtn.style.cursor = 'pointer';
-        this.closeBtn.style.zIndex = '9002';
-        this.closeBtn.style.boxShadow = '0 0 15px rgba(255,42,85,0.2)';
-        this.closeBtn.style.transition = 'all 0.2s ease';
-        
-        this.closeBtn.onmouseenter = () => {
-            this.closeBtn.style.background = 'rgba(255, 42, 85, 0.35)';
-            this.closeBtn.style.boxShadow = '0 0 20px rgba(255,42,85,0.5)';
-        };
-        this.closeBtn.onmouseleave = () => {
-            this.closeBtn.style.background = 'rgba(255, 42, 85, 0.15)';
-            this.closeBtn.style.boxShadow = '0 0 15px rgba(255,42,85,0.2)';
-        };
-        this.closeBtn.onclick = () => {
-            this.isVisible = false;
-            this.hideAvatar();
-        };
-        this.container.appendChild(this.closeBtn);
+        // UI header is already defined in index.html
     }
 
     loadHumanBustModel() {
@@ -551,11 +497,15 @@ class AvatarEngine {
     }
 
     formAvatar() {
-        if (this.isForming) return;
+        if (!this.container) return;
+        this.container.style.display = 'block';
+        void this.container.offsetWidth;
         this.container.style.opacity = '1';
         this.container.style.pointerEvents = 'auto';
         this.isForming = true;
         this.isVisible = true;
+
+        this.resizeToContainer();
 
         if (window.jarvisAudio) window.jarvisAudio.playBoot();
         if (!this.animFrameId) {
@@ -564,15 +514,22 @@ class AvatarEngine {
     }
 
     hideAvatar() {
+        if (!this.container) return;
         this.isVisible = false;
+        this.isForming = false;
+        this.container.style.opacity = '0';
+        this.container.style.pointerEvents = 'none';
+
         if (this.animFrameId) {
             cancelAnimationFrame(this.animFrameId);
             this.animFrameId = null;
         }
-        if (!this.isForming) return;
-        this.container.style.opacity = '0';
-        this.container.style.pointerEvents = 'none';
-        this.isForming = false;
+
+        setTimeout(() => {
+            if (!this.isVisible && this.container) {
+                this.container.style.display = 'none';
+            }
+        }, 500);
 
         if (this.particleSystem) {
             const count = this.particleCount;
@@ -588,8 +545,19 @@ class AvatarEngine {
         }
     }
 
+    resizeToContainer() {
+        if (!this.container || !this.camera || !this.renderer) return;
+        const width = this.container.clientWidth || 340;
+        const height = (this.container.clientHeight || 380) - 38;
+        if (width > 0 && height > 0) {
+            this.camera.aspect = width / height;
+            this.camera.updateProjectionMatrix();
+            this.renderer.setSize(width, height);
+        }
+    }
+
     animate() {
-        if (!this.isVisible || (this.container && (this.container.style.display === 'none' || this.container.style.opacity === '0'))) {
+        if (!this.isVisible || !this.container || this.container.style.display === 'none' || this.container.style.opacity === '0') {
             this.animFrameId = null;
             return;
         }

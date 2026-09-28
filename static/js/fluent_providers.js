@@ -57,17 +57,17 @@ class FluentDesktopHub {
   }
 
   _bindInteractiveButtons() {
-    // Avatar toggle
+    // Avatar toggle in top bar
     const avBtn = document.getElementById('avatarToggleBtn');
     if (avBtn) {
       avBtn.addEventListener('click', () => {
         const holo = document.getElementById('hologramContainer');
         if (holo) {
-          const isHidden = (holo.style.display === 'none' || !holo.style.display);
-          holo.style.display = isHidden ? 'block' : 'none';
+          const isHidden = (holo.style.display === 'none' || holo.style.opacity === '0' || !holo.style.display);
           if (isHidden) {
             if (window.showHolographicAvatar) window.showHolographicAvatar();
-            else if (window.initHolographicAvatar) window.initHolographicAvatar();
+          } else {
+            if (window.hideHolographicAvatar) window.hideHolographicAvatar();
           }
         }
       });
